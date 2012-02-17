@@ -1,0 +1,5 @@
+ubihelper - an android background service to provide access to sensors 
+and maybe networking from AppFurnace and similar PhoneGap browser-style applications
+i.e. over local HTTP.
+
+Chris Greenhalgh, University of Nottingham, 2012

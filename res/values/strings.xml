@@ -12,5 +12,7 @@
     <string name="notification_start_message">Started ubihelper service</string>
     <string name="notification_title">Ubihelper service</string>
     <string name="notification_description">Manage the running ubihelper service</string>
+    <string name="test_button">Test Http</string>
+    <string name="test_app_name">Test ubihelper</string>
 
 </resources>

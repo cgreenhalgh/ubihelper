@@ -9,7 +9,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -29,13 +31,17 @@ public class Service extends android.app.Service {
 	private static final String DEFAULT_PATH = "ubihelper";
 	private int httpPort;
 	private String httpPath;
+	private Handler mHandler;
+	private static final int CLIENT_REQUEST = 1;
 	
 	@Override
 	public void onCreate() {
 		// One-time set-up...
-		Log.d(TAG,"onCreate()");
+		Log.d(TAG,"onCreate()");		
 		// TODO
 		super.onCreate();
+		// handler for requests
+		mHandler = new Handler();
 		// create taskbar notification
 		int icon = R.drawable.notification_icon;
 		CharSequence tickerText = getText(R.string.notification_start_message);
@@ -124,4 +130,37 @@ public class Service extends android.app.Service {
 				httpListener.setPort(httpPort);
 		}
 	}
+	/** post request from another thread */
+	public boolean postRequest(final String path, final String body, final HttpContinuation continuation) {
+		return mHandler.post(new Runnable() {
+			public void run() {
+				String response = null;
+				int status = 200;
+				String message = "OK";
+				try {
+					response = handleRequest(path, body);
+				}
+				catch (HttpError he) {
+					status = he.getStatus();
+					message = he.getMessage();
+				}
+				catch (Exception e) {
+					status = 500;
+					message = "Internal error: "+e.getMessage();
+				}
+				try {
+					if (continuation!=null)
+						continuation.done(status, message, response);
+				}
+				catch (Exception e) {
+					Log.d(TAG,"Calling continuation: "+e.getMessage());
+				}
+			}
+		});
+	}
+	protected String handleRequest(String path, String body) throws HttpError {
+		Log.d(TAG,"handleRequest "+path+" "+body);
+		// TODO
+		return "[]";
+	}	
 }
