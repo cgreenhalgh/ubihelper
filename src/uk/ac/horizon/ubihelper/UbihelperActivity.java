@@ -45,7 +45,10 @@ public class UbihelperActivity extends Activity {
 		DefaultHttpClient httpClient = new DefaultHttpClient();
 	    HttpPost httppost = new HttpPost("http://127.0.0.1:8180/ubihelper");
 	    try {
-			httppost.setEntity(new StringEntity("[]", "UTF-8"));
+			httppost.setEntity(new StringEntity(
+					"[{\"name\":\"magnetic\",\"period\":0.5,\"count\":1,\"timeout\":20},"+
+					"{\"name\":\"accelerometer\",\"period\":0.5,\"count\":1,\"timeout\":20}]"
+					, "UTF-8"));
 			HttpResponse response = httpClient.execute(httppost);
 			final int status = response.getStatusLine().getStatusCode();
 			final String message = response.getStatusLine().getReasonPhrase();

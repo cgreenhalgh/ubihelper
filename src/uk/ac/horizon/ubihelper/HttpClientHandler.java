@@ -34,9 +34,9 @@ public class HttpClientHandler extends Thread {
 		try {
 			// parse request
 			BufferedInputStream bis = new BufferedInputStream(s.getInputStream());
-			InputStreamReader isr = new InputStreamReader(bis, "US-ASCII");
+			//InputStreamReader isr = new InputStreamReader(bis, "US-ASCII");
 			// request line
-			String request = readLine(isr);
+			String request = readLine(bis);
 			Log.d(TAG,"Request: "+request);
 			String requestEls[] = request.split(" ");
 			if (requestEls.length!=3) 
@@ -47,7 +47,7 @@ public class HttpClientHandler extends Thread {
 			// header lines
 			HashMap<String,String> headers = new HashMap<String,String>();
 			while (true) {
-				String header = readLine(isr);
+				String header = readLine(bis);
 				if (header.length()==0)
 					break;
 				Log.d(TAG,"Header line: "+header);
@@ -68,12 +68,13 @@ public class HttpClientHandler extends Thread {
 				catch (NumberFormatException nfe) {
 					throw HttpError.badRequest("Invalid content-length ("+contentLength+")");
 				}
+			Log.d(TAG,"Read request body "+length+" bytes");
 			byte buf[] = new byte[length>=0 ? length : 1000];
 			int count = 0;
 			while (length<0 || count<length) {
 				int n = bis.read(buf, count, buf.length-count);
 				if (n<0) {
-					if (count<0)
+					if (length<0)
 						break;
 					else
 						throw HttpError.badRequest("Request body too short ("+count+"/"+length+")");
@@ -116,7 +117,7 @@ public class HttpClientHandler extends Thread {
 			BufferedOutputStream bos = new BufferedOutputStream(s.getOutputStream());
 			OutputStreamWriter osw = new OutputStreamWriter(bos, "US-ASCII");
 			osw.write("HTTP/1.0 "+mStatus+" "+mMessage+"\r\n");
-			byte resp [] = mResponseBody.getBytes("UTF-8");
+			byte resp [] = mResponseBody==null ? new byte[0] : mResponseBody.getBytes("UTF-8");
 			osw.write("Content-Length: "+resp.length+"\r\n");
 			osw.write("Content-Type: application/json\r\n");
 			osw.write("\r\n");
@@ -155,6 +156,22 @@ public class HttpClientHandler extends Thread {
 		StringBuilder sb = new StringBuilder();
 		while (true) {
 			int c = isr.read();
+			if (c<0)
+				break;
+			if (c=='\r')
+				// skip
+				continue;
+			if (c=='\n')
+				break;
+			sb.append((char)c);
+		}
+		return sb.toString();
+	}
+
+	private String readLine(BufferedInputStream bis) throws IOException {
+		StringBuilder sb = new StringBuilder();
+		while (true) {
+			int c = bis.read();
 			if (c<0)
 				break;
 			if (c=='\r')

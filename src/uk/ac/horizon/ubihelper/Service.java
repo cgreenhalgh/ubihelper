@@ -3,12 +3,20 @@
  */
 package uk.ac.horizon.ubihelper;
 
+import java.util.LinkedList;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -28,11 +36,10 @@ public class Service extends android.app.Service {
 	private static final int RUNNING_ID = 1;
 	private HttpListener httpListener = null;
 	private static final int DEFAULT_PORT = 8080;
-	private static final String DEFAULT_PATH = "ubihelper";
+	private static final String DEFAULT_PATH = "/ubihelper";
 	private int httpPort;
-	private String httpPath;
 	private Handler mHandler;
-	private static final int CLIENT_REQUEST = 1;
+	private LinkedList<NamedChannel> channels = new LinkedList<NamedChannel>();
 	
 	@Override
 	public void onCreate() {
@@ -59,11 +66,21 @@ public class Service extends android.app.Service {
 
 		startForeground(RUNNING_ID, notification);	
 		
+		Log.d(TAG,"Create sensor channels...");
+		// sensors
+		SensorChannel magnetic = new SensorChannel("magnetic", this, Sensor.TYPE_MAGNETIC_FIELD);
+		channels.add(magnetic);
+		SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
+		channels.add(accelerometer);
+
+		Log.d(TAG,"Create http server...");
+		
+		// http server
 		httpPort = getPort();
-		httpPath = getPath();
 
 		httpListener = new HttpListener(this, httpPort);
 		httpListener.start();
+		Log.d(TAG,"onCreate() finished");
 	}
 	private int getPort() {
 		int port = DEFAULT_PORT;
@@ -157,10 +174,50 @@ public class Service extends android.app.Service {
 				}
 			}
 		});
-	}
-	protected String handleRequest(String path, String body) throws HttpError {
+	}	
+	
+	private String handleRequest(String path, String body) throws HttpError {
 		Log.d(TAG,"handleRequest "+path+" "+body);
-		// TODO
-		return "[]";
+		String myPath = getPath();
+		if (!myPath.equals(path))
+			throw HttpError.badRequest("Incorrect path ("+path+")");
+		JSONArray response = new JSONArray();
+		try {
+			JSONArray request = (JSONArray)new JSONTokener(body).nextValue();
+			// TODO
+			for (int i=0; i<request.length(); i++) {
+				JSONObject req = request.getJSONObject(i);
+				String name = req.getString("name");
+				// defaults?!
+				double period = req.has("period") ? req.getDouble("period") : 1;
+				int count = req.has("count") ? req.getInt("count") : 1;
+				int timeout = req.has("timeout") ? req.getInt("timeout") : 30;
+				
+				JSONObject resp = new JSONObject();
+				resp.put("name", name);
+				
+				NamedChannel nc = null;
+				for (int ci=0; nc==null && ci<channels.size(); ci++) {
+					if (channels.get(i).getName().equals(name))
+						nc = channels.get(i);
+				}
+				if (nc!=null) {
+					JSONArray values = new JSONArray();
+					resp.put("values", values);
+
+					nc.updateConfiguration(count, period, timeout);
+					LinkedList<JSONObject> vs = nc.getValues();
+					for (JSONObject v : vs)
+						values.put(v);
+							
+				} else {
+					Log.d(TAG,"Unknown channel "+name);
+				}
+				response.put(resp);
+			}
+		} catch (JSONException e) {
+			throw HttpError.badRequest("Requst not well-formed JSON");
+		}
+		return response.toString();
 	}	
 }

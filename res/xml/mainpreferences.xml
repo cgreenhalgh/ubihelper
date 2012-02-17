@@ -23,7 +23,7 @@
 		<EditTextPreference 
 		    android:key="http_path"
 		    android:title="@string/http_path_preference_title" 
-		    android:defaultValue="ubihelper"	    
+		    android:defaultValue="/ubihelper"	    
 		    />
 		
 		</PreferenceCategory>
