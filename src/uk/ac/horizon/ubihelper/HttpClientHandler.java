@@ -43,6 +43,8 @@ public class HttpClientHandler extends Thread {
 			OutputStreamWriter osw = new OutputStreamWriter(bos, "US-ASCII");
 			osw.write("HTTP/1.0 200 OK\r\n");
 			osw.write("\r\n");
+			osw.write("Hello!");
+			osw.close();
 		}
 		catch (IOException ie) {
 			Log.d(TAG,"Error: "+ie.getMessage());

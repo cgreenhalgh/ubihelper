@@ -28,11 +28,13 @@ public class HttpListener extends Thread {
 	public synchronized void close() {
 		stopped = true;
 		this.interrupt();
+		closeInternal();
 	}
 	/** set port */
 	public synchronized void setPort(int port) {
 		this.port = port;
 		this.interrupt();
+		closeInternal();
 	}
 	/** run */
 	public void run() {
@@ -40,6 +42,7 @@ public class HttpListener extends Thread {
 		while (!stopped) {
 			// may interrupt...
 			try {
+				ServerSocket ss = null;
 				synchronized (this) {
 					if (socket!=null && socket.getLocalPort()!=port) 
 						closeInternal();
@@ -56,10 +59,13 @@ public class HttpListener extends Thread {
 							wait(1000);
 						}
 					}
+					// clone reference in critical section!
+					ss = socket;
 				}
-				if (socket!=null)
+				if (ss!=null)
 					try {
-						Socket s = socket.accept();
+						// may have been closed concurrently, so don't worry too much
+						Socket s = ss.accept();
 						handleClient(s);
 					} catch (IOException e) {
 						Log.e(TAG,"Error in accept: "+e.getMessage());
