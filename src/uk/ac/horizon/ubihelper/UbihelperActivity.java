@@ -3,6 +3,7 @@ package uk.ac.horizon.ubihelper;
 import android.app.Activity;
 import android.os.Bundle;
 
+/** dummy activity */
 public class UbihelperActivity extends Activity {
     /** Called when the activity is first created. */
     @Override

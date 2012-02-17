@@ -11,4 +11,21 @@
 
     </PreferenceCategory>
     
+    <PreferenceCategory
+            android:title="@string/http_preferences">
+
+		<EditTextPreference 
+		    android:key="http_port"
+		    android:title="@string/http_port_preference_title" 
+		    android:defaultValue="8180"
+		    />
+		
+		<EditTextPreference 
+		    android:key="http_path"
+		    android:title="@string/http_path_preference_title" 
+		    android:defaultValue="ubihelper"	    
+		    />
+		
+		</PreferenceCategory>
+    
 </PreferenceScreen>

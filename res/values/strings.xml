@@ -6,5 +6,11 @@
     <string name="general_preferences">General Preferences</string>
     <string name="run_preference_title">Run Ubihelper</string>
     <string name="run_preference_summary">Run the ubihelper service in the background.</string>
+    <string name="http_preferences">HTTP Preferences</string>
+    <string name="http_port_preference_title">Port number</string>
+    <string name="http_path_preference_title">Path (secret)</string>
+    <string name="notification_start_message">Started ubihelper service</string>
+    <string name="notification_title">Ubihelper service</string>
+    <string name="notification_description">Manage the running ubihelper service</string>
 
 </resources>

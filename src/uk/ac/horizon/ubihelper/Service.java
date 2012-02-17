@@ -3,7 +3,12 @@
  */
 package uk.ac.horizon.ubihelper;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -16,13 +21,31 @@ public class Service extends android.app.Service {
 
 	// local binder for this class
 	private final IBinder mBinder = new LocalBinder();
-	
+	/** notification manager */
+	private static final int RUNNING_ID = 1;
+
 	@Override
 	public void onCreate() {
 		// One-time set-up...
 		Log.d(TAG,"onCreate()");
 		// TODO
 		super.onCreate();
+		// create taskbar notification
+		int icon = R.drawable.notification_icon;
+		CharSequence tickerText = getText(R.string.notification_start_message);
+		long when = System.currentTimeMillis();
+
+		Notification notification = new Notification(icon, tickerText, when);
+		
+		Context context = this;
+		CharSequence contentTitle = getText(R.string.notification_title);
+		CharSequence contentText = getText(R.string.notification_description);
+		Intent notificationIntent = new Intent(this, MainPreferences.class);
+		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+		notification.setLatestEventInfo(context, contentTitle, contentText, contentIntent);
+
+		startForeground(RUNNING_ID, notification);	
 	}
 
 	@Override
@@ -31,6 +54,9 @@ public class Service extends android.app.Service {
 		Log.d(TAG,"onDestroy()");
 		// TODO
 		super.onDestroy();
+		// tidy up notification
+		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		mNotificationManager.cancel(RUNNING_ID);	
 	}
 
 	@Override
@@ -55,5 +81,11 @@ public class Service extends android.app.Service {
 		Service getService() {
 			return Service.this;
 		}
+	}
+	
+	/** public API - preference changed */
+	public void sharedPreferenceChanged(SharedPreferences prefs,
+			String key) {
+		Log.d(TAG, "onSharedPreferenceChanged("+key+")");
 	}
 }
