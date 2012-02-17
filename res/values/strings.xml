@@ -3,5 +3,8 @@
 
     <string name="hello">Hello World, UbihelperActivity!</string>
     <string name="app_name">Ubihelper</string>
+    <string name="general_preferences">General Preferences</string>
+    <string name="run_preference_title">Run Ubihelper</string>
+    <string name="run_preference_summary">Run the ubihelper service in the background.</string>
 
 </resources>
