@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 /**
@@ -23,7 +24,12 @@ public class Service extends android.app.Service {
 	private final IBinder mBinder = new LocalBinder();
 	/** notification manager */
 	private static final int RUNNING_ID = 1;
-
+	private HttpListener httpListener = null;
+	private static final int DEFAULT_PORT = 8080;
+	private static final String DEFAULT_PATH = "ubihelper";
+	private int httpPort;
+	private String httpPath;
+	
 	@Override
 	public void onCreate() {
 		// One-time set-up...
@@ -46,6 +52,28 @@ public class Service extends android.app.Service {
 		notification.setLatestEventInfo(context, contentTitle, contentText, contentIntent);
 
 		startForeground(RUNNING_ID, notification);	
+		
+		httpPort = getPort();
+		httpPath = getPath();
+
+		httpListener = new HttpListener(this, httpPort);
+		httpListener.start();
+	}
+	private int getPort() {
+		int port = DEFAULT_PORT;
+		String sport = PreferenceManager.getDefaultSharedPreferences(this).getString(MainPreferences.HTTP_PORT_PREFERENCE, null);
+		if (sport!=null)
+			try {
+				port = Integer.parseInt(sport);
+			}
+			catch (NumberFormatException nfe) {
+				Log.e(TAG,"Port value not a number: "+sport);
+			}
+		return port;
+	}
+	private String getPath() {
+		String path = PreferenceManager.getDefaultSharedPreferences(this).getString(MainPreferences.HTTP_PATH_PREFERENCE, DEFAULT_PATH);
+		return path;
 	}
 
 	@Override
@@ -57,6 +85,8 @@ public class Service extends android.app.Service {
 		// tidy up notification
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancel(RUNNING_ID);	
+		if (httpListener!=null)
+			httpListener.close();
 	}
 
 	@Override
@@ -87,5 +117,11 @@ public class Service extends android.app.Service {
 	public void sharedPreferenceChanged(SharedPreferences prefs,
 			String key) {
 		Log.d(TAG, "onSharedPreferenceChanged("+key+")");
+		if (MainPreferences.HTTP_PORT_PREFERENCE.equals(key)) {
+			// update port
+			httpPort = getPort();
+			if (httpListener!=null)
+				httpListener.setPort(httpPort);
+		}
 	}
 }
