@@ -28,4 +28,27 @@
 		
 		</PreferenceCategory>
     
+    <PreferenceCategory
+            android:title="@string/wifidisc_preferences">
+
+        <CheckBoxPreference
+                android:key="wifidisc"
+                android:title="@string/wifidisc_preference_title"
+                android:summary="@string/wifidisc_preference_summary" />
+
+<!-- 
+		<EditTextPreference 
+		    android:key="http_port"
+		    android:title="@string/wifidisc_port_preference_title" 
+		    android:defaultValue="5353"
+		    />
+		
+		<EditTextPreference 
+		    android:key="http_path"
+		    android:title="@string/wifidisc_addr_preference_title" 
+		    android:defaultValue="224.0.0.251"	    
+		    />
+ -->
+ 		
+		</PreferenceCategory>
 </PreferenceScreen>

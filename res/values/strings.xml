@@ -14,5 +14,8 @@
     <string name="notification_description">Manage the running ubihelper service</string>
     <string name="test_button">Test Http</string>
     <string name="test_app_name">Test ubihelper</string>
+    <string name="wifidisc_preferences">Wifi Discovery</string>
+    <string name="wifidisc_preference_title">Enable Wifi Discovery</string>
+    <string name="wifidisc_preference_summary">Allow device to be discovered over wifi</string>
 
 </resources>
