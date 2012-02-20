@@ -192,16 +192,31 @@ public class DnsProtocol {
 	}
 	private String unmarshall(int pos[]) throws IOException {
 		StringBuilder sb = new StringBuilder();
-		while (pos[0]<len) {
-			int l = bytes[pos[0]++] & 0xff;
+		int p = pos[0];
+		boolean refed = false;
+		while (p<len) {
+			int l = bytes[p++] & 0xff;
+			if (!refed)
+				pos[0] = p;
 			if (l==0)
 				break;
-			if (pos[0]+l>len)
-				throw new IOException("Truncated bytes in name at "+pos[0]);
+			if ((l & 0xc0)==0xc0) {
+				// reference
+				int ref = ((l & ~0xc0) << 8) | (bytes[pos[0]++] & 0xff);
+				if (ref<0 || ref>=len)
+					throw new IOException("Reference out of range: "+ref);
+				p = ref;
+				refed = true;
+				continue;
+			}
+			if (p+l>len)
+				throw new IOException("Truncated bytes in name at "+p);
 			if (sb.length()>0)
 				sb.append(".");
-			sb.append(new String(bytes, pos[0], l));
-			pos[0] += l;
+			sb.append(new String(bytes, p, l));
+			p += l;
+			if (!refed)
+				pos[0] = p;
 		}
 		return sb.toString();
 	}
