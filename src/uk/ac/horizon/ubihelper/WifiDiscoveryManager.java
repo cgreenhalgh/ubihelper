@@ -3,6 +3,11 @@
  */
 package uk.ac.horizon.ubihelper;
 
+import java.lang.reflect.Field;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.UnknownHostException;
+
 import uk.ac.horizon.ubihelper.DnsProtocol.SrvData;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -35,7 +40,18 @@ public class WifiDiscoveryManager {
 	public WifiDiscoveryManager(Service service) {
 		this.service = service;
 		wifi = (WifiManager)service.getSystemService(Service.WIFI_SERVICE);
-		wifiLock = wifi.createWifiLock("ubihelper-wifidisc");
+		// NB on my Nexus S, if you don't get the FULL_HIGH_PERF mode
+		// then multicast reception stops when the screen goes off, even
+		// if you have the multicast lock.
+		int wifiMode = WifiManager.WIFI_MODE_FULL;
+		try {
+			Field f = WifiManager.class.getField("WIFI_MODE_FULL_HIGH_PERF");
+			wifiMode = f.getInt(null);
+			Log.d(TAG,"Found WIFI_MODE_FULL_HIGH_PERF");
+		} catch (Exception e) {
+			Log.d(TAG,"Did not find WIFI_MODE_FULL_HIGH_PERF");
+		}
+		wifiLock = wifi.createWifiLock(wifiMode, "ubihelper-wifidisc");
 		multicastLock = wifi.createMulticastLock("ubihelper-wifidisc");
 	}
 	
@@ -74,19 +90,18 @@ public class WifiDiscoveryManager {
 		filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
 		service.registerReceiver(updateReceiver, filter);
 		wifiLock.acquire();
-		multicastLock.acquire();
-		Log.d(TAG, "Multicast lock held: "+multicastLock.isHeld());
-		dnsServer = new DnsServer();
-		dnsServer.start();
+		//multicastLock.acquire();
+		//Log.d(TAG, "Multicast lock held: "+multicastLock.isHeld());
+		//dnsServer = new DnsServer();
+		//dnsServer.start();
+		updateDnsServer();
 	}
 
 	public synchronized void updateDnsServer() {
-		if (dnsServer==null)
-			return;
-
-		wifiLock.acquire();
-		multicastLock.acquire();
-		Log.d(TAG, "Multicast lock held: "+multicastLock.isHeld());
+		if (dnsServer!=null) {
+			dnsServer.close();
+			dnsServer = null;
+		}
 
 		//int state = wifi.getWifiState();
 		WifiInfo ci = wifi.getConnectionInfo();
@@ -104,11 +119,30 @@ public class WifiDiscoveryManager {
 		//int gateway = di!=null ? di.gateway : 0;
 
 		if (ip!=0) {
+			wifiLock.acquire();
+			// apparently it is important to (re)acquire this lock after any
+			// change of network
+			multicastLock.acquire();
+			Log.d(TAG, "Multicast lock held: "+multicastLock.isHeld());
+
+			dnsServer = new DnsServer();
+			
 			byte addr[] = new byte[4];
 			addr[0] = (byte)(ip & 0xff);
 			addr[1]= (byte)((ip >> 8) & 0xff);
 			addr[2]= (byte)((ip >> 16) & 0xff);
 			addr[3]= (byte)((ip >> 24) & 0xff);
+			
+			InetAddress inet;
+			try {
+				// multicast seems to need the interface set explicitly to work
+				inet = InetAddress.getByName(WifiStatusActivity.ip2string(ip));
+				NetworkInterface ni = NetworkInterface.getByInetAddress(inet);
+				dnsServer.setNeworkInterface(ni);
+			} catch (Exception e) {
+				Log.w(TAG, "Error updating network interface: "+e.getMessage());
+			}
+			dnsServer.start();
 			
 			String name = getDomainNameForMac(mac);
 			Log.d(TAG,"Discoverable "+WifiStatusActivity.ip2string(ip)+" as "+name);
@@ -132,7 +166,7 @@ public class WifiDiscoveryManager {
 		}
 		else {
 			Log.d(TAG,"No IP - not discoverable");
-			dnsServer.clear();
+			//dnsServer.clear();
 		}
 	}
 	

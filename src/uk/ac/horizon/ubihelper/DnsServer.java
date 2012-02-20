@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
@@ -30,10 +32,27 @@ public class DnsServer extends Thread {
 	private MulticastSocket socket = null;
 	private boolean closed = false;
 	private LinkedList<DnsProtocol.RR> rrs = new LinkedList<DnsProtocol.RR>();
-	
+	private NetworkInterface networkInterface;
+
 	public DnsServer() {
 	}
 	
+	public synchronized void setNeworkInterface(NetworkInterface ni) {
+		networkInterface = ni;
+		if (socket!=null) {
+			try {
+				socket.leaveGroup(InetAddress.getByName(MDNS_ADDRESS));
+			} catch (Exception e) {
+				logger.warning("Unable to leaveGroup: "+e.getMessage());
+			}
+			try {
+				socket.setNetworkInterface(networkInterface);
+				socket.joinGroup(InetAddress.getByName(MDNS_ADDRESS));
+			} catch (Exception e) {
+				logger.warning("Unable to setNetworkInterface: "+e.getMessage());
+			}
+		}
+	}
 	public synchronized void add(DnsProtocol.RR r) {
 		for (int i=0; i<rrs.size(); i++) {
 			DnsProtocol.RR r2 = rrs.get(i);
@@ -80,11 +99,13 @@ public class DnsServer extends Thread {
 						socket = new MulticastSocket(MDNS_PORT);
 						//socket.setTimeToLive(1);
 						socket.setReuseAddress(true);
+						if (networkInterface!=null)							
+							socket.setNetworkInterface(networkInterface);
 						// join group?! certainly needed on windows
 						socket.joinGroup(InetAddress.getByName(MDNS_ADDRESS));
 						// leave unbound (0.0.0.0)?!
 						//Log.d(TAG,"Opened multicast socket "+MDNS_ADDRESS+":"+MDNS_PORT);
-						logger.info("Opened multicast socket "+MDNS_ADDRESS+":"+MDNS_PORT);
+						logger.info("Opened multicast socket "+MDNS_ADDRESS+":"+MDNS_PORT+" (network interface "+networkInterface+")");
 					}
 					catch (Exception e) {
 						//Log.e(TAG,"Creating multicast socket on "+MDNS_PORT+": "+e.getMessage());
@@ -151,7 +172,9 @@ public class DnsServer extends Thread {
 	
 	/** test */
 	public static void main(String args[]) {
+		NetworkInterface ni = DnsClient.getFirstActiveInterface();
 		DnsServer server = new DnsServer();
+		server.setNeworkInterface(ni);
 		DnsProtocol.RR r = new DnsProtocol.RR();
 		r.name = "some.name.local";
 		r.rclass = DnsProtocol.CLASS_IN;
@@ -160,16 +183,16 @@ public class DnsServer extends Thread {
 		r.rdata[0] = 0x1; r.rdata[1] = 0x2; r.rdata[2] = 0x3; r.rdata[3] = 0x4;
 		server.add(r);
 		r = new DnsProtocol.RR();
-		r.name = "some.name.local";
+		r.name = "_ubihelper._tcp.local";
 		r.rclass = DnsProtocol.CLASS_IN;
 		r.type = DnsProtocol.TYPE_PTR;
-		r.rdata = DnsProtocol.ptrToData("Some instance", "ptr.some.name.local");
+		r.rdata = DnsProtocol.ptrToData("Some instance", "_ubihelper._tcp.local");
 		server.add(r);
 		r = new DnsProtocol.RR();
-		r.name = "some.name.local";
+		r.name = "_ubihelper._tcp.local";
 		r.rclass = DnsProtocol.CLASS_IN;
 		r.type = DnsProtocol.TYPE_SRV;
-		SrvData srv = new SrvData(1, 1, 8180, "srv.some.name.local");
+		SrvData srv = new SrvData(1, 1, 8180, "some.name.local");
 		r.rdata = DnsProtocol.srvToData(srv);
 		server.add(r);
 		server.start();

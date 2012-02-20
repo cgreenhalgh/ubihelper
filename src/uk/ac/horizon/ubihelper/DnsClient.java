@@ -8,9 +8,13 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 //import java.net.SocketException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
@@ -30,7 +34,7 @@ public class DnsClient extends Thread {
 	private DnsProtocol.Query query;
 	private long startTime;
 	private boolean multiple = false;
-
+	private NetworkInterface networkInterface;
 	private InetAddress destAddress;
 	private int destPort = DnsServer.MDNS_PORT;
 	
@@ -45,6 +49,9 @@ public class DnsClient extends Thread {
 		} catch (UnknownHostException e) {
 			logger.warning("Unknown destination: "+dest);
 		}		
+	}
+	public synchronized void setNetworkInterface(NetworkInterface ni) {
+		networkInterface = ni;
 	}
 	
 	public synchronized void close() {
@@ -85,6 +92,10 @@ public class DnsClient extends Thread {
 				socket = new MulticastSocket();
 				//socket.setTimeToLive(1);
 				//socket.setSoTimeout(TIMEOUT_MS);
+				if (networkInterface!=null) {
+					logger.info("Bind client socket to "+networkInterface.getDisplayName());
+					socket.setNetworkInterface(networkInterface);
+				}
 			}
 			catch (Exception e) {
 				errorInternal("Creating socket: "+e.getMessage());
@@ -172,7 +183,27 @@ public class DnsClient extends Thread {
 		error = msg;
 		closeInternal();
 	}
-	
+
+	public static NetworkInterface getFirstActiveInterface() {
+		try {
+			Enumeration<NetworkInterface> nets;
+			nets = NetworkInterface.getNetworkInterfaces();
+			for (NetworkInterface netint : Collections.list(nets)) {
+				Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
+				for (InetAddress inetAddress : Collections.list(inetAddresses)) {
+					if (inetAddress.isLoopbackAddress() || inetAddress.isMulticastAddress() || inetAddress.getHostAddress().contains(":"))
+						;
+					else {
+						return netint;
+					}
+				}
+			}
+		} catch (Exception e) {
+			logger.warning("Problem getting active network interfaces: "+e.getMessage());
+			
+		}
+		return null;
+	}
 	/** test */
 	public static void main(String args[]) {
 		test(args, false);
@@ -195,6 +226,9 @@ public class DnsClient extends Thread {
 		DnsClient c = new DnsClient(q, multiple);
 		if (args.length>=3)
 			c.setDestination(args[2]);
+		NetworkInterface netinf = getFirstActiveInterface();
+		if (netinf!=null)
+			c.setNetworkInterface(netinf);
 		c.start();
 		try {
 			c.join();

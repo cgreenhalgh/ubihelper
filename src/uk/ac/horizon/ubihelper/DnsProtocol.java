@@ -135,6 +135,8 @@ public class DnsProtocol {
 		srv.priority = unmarshall2(b, p, b.length);
 		srv.weight = unmarshall2(b, p, b.length);
 		srv.port = unmarshall2(b, p, b.length);
+		// TODO this doesn't handle references properly (should be in main packet,
+		// not just rdata)
 		srv.target = unmarshall(b, p, b.length);
 		return srv;
 	}
