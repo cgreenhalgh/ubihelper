@@ -49,6 +49,11 @@
 		    android:defaultValue="224.0.0.251"	    
 		    />
  -->
- 		
+ 		<Preference 
+ 		    android:title="Peer Devices" 
+ 		    android:summary="Manage peer devices for information sharing">
+ 			<intent android:action="uk.ac.horizon.ubihelper.MANAGE_PEERS" />
+ 		</Preference>
+ 	
 		</PreferenceCategory>
 </PreferenceScreen>
