@@ -38,6 +38,8 @@ public class Service extends android.app.Service {
 	private static final int DEFAULT_PORT = 8080;
 	private static final String DEFAULT_PATH = "/ubihelper";
 	private int httpPort;
+	private boolean wifiDiscoverable;
+	private WifiDiscoveryManager wifiDiscoveryManager;
 	private Handler mHandler;
 	private LinkedList<NamedChannel> channels = new LinkedList<NamedChannel>();
 	
@@ -80,6 +82,12 @@ public class Service extends android.app.Service {
 
 		httpListener = new HttpListener(this, httpPort);
 		httpListener.start();
+		
+		// wifi discovery
+		wifiDiscoveryManager = new WifiDiscoveryManager(this);
+		wifiDiscoverable = getWifiDiscoverable();
+		wifiDiscoveryManager.setEnabled(wifiDiscoverable);
+		
 		Log.d(TAG,"onCreate() finished");
 	}
 	private int getPort() {
@@ -98,6 +106,10 @@ public class Service extends android.app.Service {
 		String path = PreferenceManager.getDefaultSharedPreferences(this).getString(MainPreferences.HTTP_PATH_PREFERENCE, DEFAULT_PATH);
 		return path;
 	}
+	private boolean getWifiDiscoverable() {
+		boolean wifidisc = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(MainPreferences.WIFIDISC_PREFERENCE, false);
+		return wifidisc;
+	}
 
 	@Override
 	public void onDestroy() {
@@ -110,6 +122,8 @@ public class Service extends android.app.Service {
 		mNotificationManager.cancel(RUNNING_ID);	
 		if (httpListener!=null)
 			httpListener.close();
+		if (wifiDiscoveryManager!=null)
+			wifiDiscoveryManager.close();
 	}
 
 	@Override
@@ -145,6 +159,10 @@ public class Service extends android.app.Service {
 			httpPort = getPort();
 			if (httpListener!=null)
 				httpListener.setPort(httpPort);
+		}
+		else if (MainPreferences.WIFIDISC_PREFERENCE.equals(key)) {
+			wifiDiscoverable = getWifiDiscoverable();
+			wifiDiscoveryManager.setEnabled(wifiDiscoverable);
 		}
 	}
 	/** post request from another thread */

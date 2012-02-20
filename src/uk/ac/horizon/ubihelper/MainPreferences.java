@@ -8,15 +8,18 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.EditTextPreference;
 import android.preference.PreferenceActivity;
+import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 /**
  * @author cmg
@@ -27,6 +30,7 @@ public class MainPreferences extends PreferenceActivity {
 	static final String RUN_PREFERENCE = "run_service";
 	static final String HTTP_PORT_PREFERENCE = "http_port";
 	static final String HTTP_PATH_PREFERENCE = "http_path";
+	static final String WIFIDISC_PREFERENCE = "wifidisc";
 	private EditTextPreference httpPortPref;
 	private EditTextPreference httpPathPref;
 	private Service mService = null;
@@ -89,9 +93,19 @@ public class MainPreferences extends PreferenceActivity {
 						if (mService!=null)
 							mService.sharedPreferenceChanged(prefs, key);
 					}
+					else if (WIFIDISC_PREFERENCE.equals(key)) {
+						Boolean discoverable = prefs.getBoolean(key, false);
+						Log.d(TAG,key+" changed to "+discoverable);
+						if (discoverable)
+							checkWifiEnabled();
+						if (mService!=null)
+							mService.sharedPreferenceChanged(prefs, key);
+					}
 					else
 					{
 						Log.d(TAG,"Preference "+key+" changed...");
+						if (mService!=null)
+							mService.sharedPreferenceChanged(prefs, key);
 					}
 				}
 
@@ -104,6 +118,9 @@ public class MainPreferences extends PreferenceActivity {
 	/** start/stop service */
 	private void startStopService(boolean run_service, String info) {
 		if (run_service) {
+			Boolean discoverable = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(WIFIDISC_PREFERENCE, false);
+			if (discoverable)
+				checkWifiEnabled();
 			Intent i = getServiceIntent();
 			startService(i);
 			Log.d(TAG,"Called startService ("+info+"");
@@ -113,6 +130,18 @@ public class MainPreferences extends PreferenceActivity {
 			boolean stopped = stopService(i);
 			if (stopped)
 				Log.d(TAG,"Stopped service ("+info+")");
+		}
+	}
+
+	private void checkWifiEnabled() {
+		// called in main thread
+		WifiManager wifi = (WifiManager)getSystemService(WIFI_SERVICE);
+		if (!wifi.isWifiEnabled()) {
+			boolean enabled = wifi.setWifiEnabled(true);
+			Log.d(TAG,"Enabled wifi: "+enabled);
+			if (!enabled) {
+				Toast.makeText(this, "Sorry, could not enable Wifi", Toast.LENGTH_SHORT);
+			}	
 		}
 	}
 

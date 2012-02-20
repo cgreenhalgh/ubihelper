@@ -34,6 +34,18 @@ public class DnsProtocol {
 		public short rclass;
 		public int ttl;
 		public byte rdata[];
+		
+		public RR() {}
+		
+		public RR(String name, short type, short rclass, int ttl, byte[] rdata) {
+			super();
+			this.name = name;
+			this.type = type;
+			this.rclass = rclass;
+			this.ttl = ttl;
+			this.rdata = rdata;
+		}
+
 		/* (non-Javadoc)
 		 * @see java.lang.Object#toString()
 		 */

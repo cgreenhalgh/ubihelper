@@ -43,6 +43,9 @@ public class DnsServer extends Thread {
 		}
 		rrs.add(r);
 	}
+	public synchronized void clear() {
+		rrs.clear();
+	}
 	
 	public synchronized boolean isRunning() {
 		return socket!=null;
