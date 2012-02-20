@@ -14,6 +14,9 @@ import android.preference.EditTextPreference;
 import android.preference.PreferenceActivity;
 import android.text.InputType;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 
 /**
  * @author cmg
@@ -39,6 +42,27 @@ public class MainPreferences extends PreferenceActivity {
         httpPathPref.setSummary(httpPathPref.getText());
 	}
 
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		 MenuInflater inflater = getMenuInflater();
+		 inflater.inflate(R.menu.mainpreferencesmenu, menu);
+		 return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.wifistatus_option:
+		{
+			Intent i  = new Intent(this, WifiStatusActivity.class); 
+			startActivity(i);
+			return true;
+		}
+		default:
+			return super.onOptionsItemSelected(item);
+		}
+	}
+	
 	/** preference change listener */
 	private final OnSharedPreferenceChangeListener onRunChangeListener = 
 			new OnSharedPreferenceChangeListener() {
