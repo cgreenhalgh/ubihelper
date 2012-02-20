@@ -131,6 +131,9 @@ public class DnsServer extends Thread {
 						logger.info("Sending response "+rp.getLength()+" bytes to "+rp.getAddress().getHostAddress()+":"+rp.getPort());
 						s.send(rp);
 					}
+					else {
+						logger.info("Ignored query "+pp);
+					}
 				}
 			}
 			catch (Exception e) {

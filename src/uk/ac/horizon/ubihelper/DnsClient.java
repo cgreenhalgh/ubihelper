@@ -27,9 +27,11 @@ public class DnsClient extends Thread {
 	private LinkedList<DnsProtocol.RR> answers = new LinkedList<DnsProtocol.RR>();
 	private DnsProtocol.Query query;
 	private long startTime;
+	private boolean multiple = false;
 	
-	public DnsClient(DnsProtocol.Query query) {
+	public DnsClient(DnsProtocol.Query query, boolean multiple) {
 		this.query = query;
+		this.multiple = multiple;
 	}
 	
 	public synchronized void close() {
@@ -90,6 +92,7 @@ public class DnsClient extends Thread {
 		}
 		final int ATTEMPTS = 3;
 		final int INTERVAL_MS = 3000;
+		done:
 		for (int a=0; a<ATTEMPTS && !closed && error==null; a++) {
 			long endTime = startTime+(a+1)*INTERVAL_MS;
 			try {
@@ -130,6 +133,8 @@ public class DnsClient extends Thread {
 								if (!known) {
 									answers.add(r);
 									logger.info("Found answer "+r);
+									if (!multiple)
+										break done;
 								}
 								else {
 									logger.info("Found known answer (query "+(a+1)+")");
@@ -156,11 +161,16 @@ public class DnsClient extends Thread {
 	
 	/** test */
 	public static void main(String args[]) {
+		test(args, false);
+		test(args, true);
+	}
+	private static void test(String args[], boolean multiple) {
 		DnsProtocol.Query q = new DnsProtocol.Query();
-		q.name = "some.name.local";
+		q.name = args.length==0 ? "some.name.local" : args[0];
 		q.rclass = DnsProtocol.CLASS_IN;
 		q.type = DnsProtocol.TYPE_A;
-		DnsClient c = new DnsClient(q);
+		logger.info("Query for "+q.name+" ("+(multiple ? "multiple" : "single")+")");
+		DnsClient c = new DnsClient(q, multiple);
 		c.start();
 		try {
 			c.join();
@@ -169,7 +179,7 @@ public class DnsClient extends Thread {
 			LinkedList<DnsProtocol.RR> rrs = c.getAnswers();
 			for (DnsProtocol.RR rr : rrs) {
 				if (rr.rdata.length==4)
-					logger.info("Found answer: "+rr.rdata[0]+"."+rr.rdata[1]+"."+rr.rdata[2]+"."+rr.rdata[3]);
+					logger.info("Found answer: "+(rr.rdata[0]&0xff)+"."+(rr.rdata[1]&0xff)+"."+(rr.rdata[2]&0xff)+"."+(rr.rdata[3]&0xff));
 				else
 					logger.info("Found answer with "+rr.rdata.length+" bytes");
 			}

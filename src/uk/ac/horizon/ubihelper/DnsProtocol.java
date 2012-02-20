@@ -241,7 +241,8 @@ public class DnsProtocol {
 	public String toString() {
 		return "DnsProtocol [queries=" + Arrays.toString(queries)
 				+ ", answers=" + Arrays.toString(answers) + ", id=" + id
-				+ ", bytes=" + Arrays.toString(bytes) + ", len=" + len
+				+ ", bytes=" + (bytes!=null ? bytes.length+"b" : "null") /*Arrays.toString(bytes)*/ 
+				+ ", len=" + len
 				+ ", response=" + response + "]";
 	}
 	public static void dump(byte b[], int offset, int len) {
