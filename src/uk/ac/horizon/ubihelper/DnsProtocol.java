@@ -6,6 +6,7 @@ package uk.ac.horizon.ubihelper;
 import java.io.IOException;
 //import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.Vector;
 
 /** Partial DNS protocol implementation for mDNS peer discovery
  * @author cmg
@@ -14,6 +15,8 @@ import java.util.Arrays;
 public class DnsProtocol {
 	public static final short CLASS_IN = 1;
 	public static final short TYPE_A = 1;
+	public static final short TYPE_PTR = 12;
+	public static final short TYPE_SRV = 33;
 	public static class Query {
 		public String name;
 		public short type;
@@ -88,6 +91,81 @@ public class DnsProtocol {
 		return p;
 	}
 
+	static class SrvData {
+		public int priority; // 16 bit
+		public int weight; // 16 bit
+		public int port; // 16 bit
+		public String target;
+		public SrvData() {}
+		/**
+		 * @param priority
+		 * @param weight
+		 * @param port
+		 * @param target
+		 */
+		public SrvData(int priority, int weight, int port, String target) {
+			super();
+			this.priority = priority;
+			this.weight = weight;
+			this.port = port;
+			this.target = target;
+		}
+		/* (non-Javadoc)
+		 * @see java.lang.Object#toString()
+		 */
+		@Override
+		public String toString() {
+			return "SvrData [priority=" + priority + ", weight=" + weight
+					+ ", port=" + port + ", target=" + target + "]";
+		}
+	}
+	public static byte[] srvToData(SrvData srv) {
+		int len = 2+2+2+getMarhsalledLength(srv.target);
+		byte b[] = new byte[len];
+		int p[] = new int[1];
+		marshall2(b, srv.priority, p);
+		marshall2(b, srv.weight, p);
+		marshall2(b, srv.port, p);
+		marshall(b, srv.target, p);
+		return b;
+	}
+	public static SrvData srvFromData(byte b[]) throws IOException {
+		SrvData srv = new SrvData();
+		int p[] = new int[1];
+		srv.priority = unmarshall2(b, p, b.length);
+		srv.weight = unmarshall2(b, p, b.length);
+		srv.port = unmarshall2(b, p, b.length);
+		srv.target = unmarshall(b, p, b.length);
+		return srv;
+	}
+	public static byte[] ptrToData(String instance, String domain) {
+		int len = getMarhsalledLength(instance,  domain);
+		byte b[] = new byte[len];
+		int p[] = new int[1];
+		marshallWord(b, instance, p);
+		marshall(b, domain, p);
+		return b;
+	}
+	public static String[] ptrFromData(byte b[]) throws IOException {
+		int p[] = new int[1];
+		return unmarshallArray(b, p, b.length);
+	}
+	/** for dns-sd ptr record */
+	public static int getMarhsalledLength(String s1, String s2) {
+		String [] ns = s2.split("\\.");
+		return 1+s1.length()+getMarshalledLength(ns);
+	}
+	public static int getMarhsalledLength(String s) {
+		String [] ns = s.split("\\.");
+		return getMarshalledLength(ns);
+	}
+	public static int getMarshalledLength(String ns[]) {
+		int len = 1;
+		for (int i=0; i<ns.length; i++) 
+			len = len+1+ns[i].length();
+		return len;
+	}
+	
 	public byte [] bytes;
 	public int len;
 	public boolean response;
@@ -98,62 +176,69 @@ public class DnsProtocol {
 		int pos [] = new int[1];
 		// header
 		// id
-		marshall2(id,pos);
+		marshall2(bytes, id,pos);
 		// flags
 		int flags = 0;
 		if (response)
 			flags |= 0x8000; // high bit
-		marshall2(flags,pos);
+		marshall2(bytes, flags,pos);
 		// nq
-		marshall2(queries.length, pos);
+		marshall2(bytes, queries.length, pos);
 		// na
-		marshall2(answers.length, pos);
-		marshall2(0,pos);
-		marshall2(0,pos);
+		marshall2(bytes, answers.length, pos);
+		marshall2(bytes, 0,pos);
+		marshall2(bytes, 0,pos);
 		// queries
 		for (int i=0; i<queries.length; i++) {
 			Query q = queries[i];
-			marshall(q.name, pos);
-			marshall2(q.type, pos);
-			marshall2(q.rclass, pos);
+			marshall(bytes, q.name, pos);
+			marshall2(bytes, q.type, pos);
+			marshall2(bytes, q.rclass, pos);
 		}
 		// answers
 		for (int i=0; i<answers.length; i++) {
 			RR r = answers[i];
-			marshall(r.name, pos);
-			marshall2(r.type, pos);
-			marshall2(r.rclass, pos);
-			marshall4(r.ttl, pos);
-			marshall2(r.rdata.length, pos);
+			marshall(bytes, r.name, pos);
+			marshall2(bytes, r.type, pos);
+			marshall2(bytes, r.rclass, pos);
+			marshall4(bytes, r.ttl, pos);
+			marshall2(bytes, r.rdata.length, pos);
 			System.arraycopy(r.rdata, 0, bytes, pos[0], r.rdata.length);
 			pos[0] += r.rdata.length;
 		}
 		len = pos[0];
 	}
-	private void marshall(String name, int pos[]) {
+	private static void marshall(byte bytes[], String name, int pos[]) {
 		String ns[] = name.split("\\.");
+		marshall(bytes, ns, pos);
+	}
+	private static void marshall(byte bytes[], String ns[], int pos[]) {
 		for (int i=0; i<ns.length; i++) {
 			// us-ascii?!
 			//byte bs[];
 			//try {
-				int l = ns[i].length();
-				//bs = ns[i].getBytes("US-ASCII");
-				bytes[pos[0]++] = (byte)l;
-				//System.arraycopy(bs, 0, bytes, pos[0], bs.length);
-				//pos[0] += bs.length;
-				for (int j=0; j<l; j++)
-					bytes[pos[0]++] = (byte)(ns[i].charAt(j) & 0x7f);
+				marshallWord(bytes, ns[i], pos);
 			//} catch (UnsupportedEncodingException e) {
 				/* ignore?! */
 			//}
 		}
 		bytes[pos[0]++] = 0;
 	}
-	private void marshall2(int value, int offset[]) {
+	private static void marshallWord(byte[] bytes, String ns, int[] pos) {
+		int l = ns.length();
+		//bs = ns[i].getBytes("US-ASCII");
+		bytes[pos[0]++] = (byte)l;
+		//System.arraycopy(bs, 0, bytes, pos[0], bs.length);
+		//pos[0] += bs.length;
+		for (int j=0; j<l; j++)
+			bytes[pos[0]++] = (byte)(ns.charAt(j) & 0x7f);
+	}
+
+	private static void marshall2(byte bytes[], int value, int offset[]) {
 		bytes[offset[0]++] = (byte)((value >> 8) & 0xff);
 		bytes[offset[0]++] = (byte)(value & 0xff);
 	}
-	private void marshall4(int value, int offset[]) {
+	private static void marshall4(byte bytes[], int value, int offset[]) {
 		bytes[offset[0]++] = (byte)((value >> 24) & 0xff);
 		bytes[offset[0]++] = (byte)((value >> 16) & 0xff);
 		bytes[offset[0]++] = (byte)((value >> 8) & 0xff);
@@ -166,35 +251,35 @@ public class DnsProtocol {
 			throw new IOException("Length > byte array size");
 		// header
 		// id
-		id = (short)unmarshall2(pos);
+		id = (short)unmarshall2(bytes, pos, len);
 		// flags
-		int flags = unmarshall2(pos);
+		int flags = unmarshall2(bytes, pos, len);
 		response = (flags & 0x8000)!=0;
 		// nq
-		int nq = unmarshall2(pos);
+		int nq = unmarshall2(bytes, pos, len);
 		queries = new Query[nq];
 		// na
-		int na = unmarshall2(pos);
+		int na = unmarshall2(bytes, pos, len);
 		answers = new RR[na];
-		unmarshall2(pos);
-		unmarshall2(pos);
+		unmarshall2(bytes, pos, len);
+		unmarshall2(bytes, pos, len);
 		// queries
 		for (int i=0; i<queries.length; i++) {
 			Query q = new Query();
 			queries[i] = q;
-			q.name = unmarshall(pos);
-			q.type = (short)unmarshall2(pos);
-			q.rclass = (short)unmarshall2(pos);
+			q.name = unmarshall(bytes, pos, len);
+			q.type = (short)unmarshall2(bytes, pos, len);
+			q.rclass = (short)unmarshall2(bytes, pos, len);
 		}
 		// answers
 		for (int i=0; i<answers.length; i++) {
 			RR r = new RR();
 			answers[i] = r;
-			r.name = unmarshall(pos);
-			r.type = (short)unmarshall2(pos);
-			r.rclass = (short)unmarshall2(pos);
-			r.ttl = unmarshall4(pos);
-			int rdatalen = unmarshall2(pos);
+			r.name = unmarshall(bytes, pos, len);
+			r.type = (short)unmarshall2(bytes, pos, len);
+			r.rclass = (short)unmarshall2(bytes, pos, len);
+			r.ttl = unmarshall4(bytes, pos, len);
+			int rdatalen = unmarshall2(bytes, pos, len);
 			if (pos[0]+rdatalen>len)
 				throw new IOException("Truncated bytes in answer "+i+" rdata at "+pos[0]);
 			r.rdata = new byte[rdatalen];
@@ -202,7 +287,7 @@ public class DnsProtocol {
 			pos[0] += r.rdata.length;
 		}
 	}
-	private String unmarshall(int pos[]) throws IOException {
+	private static String unmarshall(byte bytes[], int pos[], int len) throws IOException {
 		StringBuilder sb = new StringBuilder();
 		int p = pos[0];
 		boolean refed = false;
@@ -232,12 +317,40 @@ public class DnsProtocol {
 		}
 		return sb.toString();
 	}
-	private int unmarshall2(int offset[]) throws IOException {
+	private static String [] unmarshallArray(byte bytes[], int pos[], int len) throws IOException {
+		Vector<String> ns =new Vector<String>();
+		int p = pos[0];
+		boolean refed = false;
+		while (p<len) {
+			int l = bytes[p++] & 0xff;
+			if (!refed)
+				pos[0] = p;
+			if (l==0)
+				break;
+			if ((l & 0xc0)==0xc0) {
+				// reference
+				int ref = ((l & ~0xc0) << 8) | (bytes[pos[0]++] & 0xff);
+				if (ref<0 || ref>=len)
+					throw new IOException("Reference out of range: "+ref);
+				p = ref;
+				refed = true;
+				continue;
+			}
+			if (p+l>len)
+				throw new IOException("Truncated bytes in name at "+p);
+			ns.add(new String(bytes, p, l));
+			p += l;
+			if (!refed)
+				pos[0] = p;
+		}
+		return ns.toArray(new String[ns.size()]);
+	}
+	private static int unmarshall2(byte bytes[], int offset[], int len) throws IOException {
 		if (offset[0]+2>len)
 			throw new IOException("Truncated bytes in int16 at "+offset[0]);
 		return ((bytes[offset[0]++] & 0xff) << 8) | (bytes[offset[0]++] & 0xff);
 	}
-	private int unmarshall4(int offset[]) throws IOException {
+	private static int unmarshall4(byte bytes[], int offset[], int len) throws IOException {
 		if (offset[0]+2>len)
 			throw new IOException("Truncated bytes in int32 at "+offset[0]);
 		return ((bytes[offset[0]++] & 0xff) << 24) | 

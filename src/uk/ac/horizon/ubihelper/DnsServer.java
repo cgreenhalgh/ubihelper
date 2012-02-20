@@ -10,6 +10,8 @@ import java.net.MulticastSocket;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
+import uk.ac.horizon.ubihelper.DnsProtocol.SrvData;
+
 //import android.util.Log;
 
 /** Embedded multicast DNS server
@@ -76,9 +78,9 @@ public class DnsServer extends Thread {
 				if (socket==null) {
 					try {
 						socket = new MulticastSocket(MDNS_PORT);
-						socket.setTimeToLive(1);
+						//socket.setTimeToLive(1);
 						socket.setReuseAddress(true);
-						// join group?!
+						// join group?! certainly needed on windows
 						socket.joinGroup(InetAddress.getByName(MDNS_ADDRESS));
 						// leave unbound (0.0.0.0)?!
 						//Log.d(TAG,"Opened multicast socket "+MDNS_ADDRESS+":"+MDNS_PORT);
@@ -156,6 +158,19 @@ public class DnsServer extends Thread {
 		r.type = DnsProtocol.TYPE_A;
 		r.rdata = new byte[4];
 		r.rdata[0] = 0x1; r.rdata[1] = 0x2; r.rdata[2] = 0x3; r.rdata[3] = 0x4;
+		server.add(r);
+		r = new DnsProtocol.RR();
+		r.name = "some.name.local";
+		r.rclass = DnsProtocol.CLASS_IN;
+		r.type = DnsProtocol.TYPE_PTR;
+		r.rdata = DnsProtocol.ptrToData("Some instance", "ptr.some.name.local");
+		server.add(r);
+		r = new DnsProtocol.RR();
+		r.name = "some.name.local";
+		r.rclass = DnsProtocol.CLASS_IN;
+		r.type = DnsProtocol.TYPE_SRV;
+		SrvData srv = new SrvData(1, 1, 8180, "srv.some.name.local");
+		r.rdata = DnsProtocol.srvToData(srv);
 		server.add(r);
 		server.start();
 	}

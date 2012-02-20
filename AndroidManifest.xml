@@ -21,6 +21,7 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 
     <uses-feature android:name="android.hardware.wifi" />
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     
     <application
         android:icon="@drawable/ic_launcher"

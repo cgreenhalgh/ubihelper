@@ -8,7 +8,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.UnknownHostException;
 //import java.net.SocketException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
@@ -28,10 +30,21 @@ public class DnsClient extends Thread {
 	private DnsProtocol.Query query;
 	private long startTime;
 	private boolean multiple = false;
+
+	private InetAddress destAddress;
+	private int destPort = DnsServer.MDNS_PORT;
 	
 	public DnsClient(DnsProtocol.Query query, boolean multiple) {
 		this.query = query;
 		this.multiple = multiple;
+		setDestination(DnsServer.MDNS_ADDRESS);
+	}
+	public synchronized void setDestination(String dest) {
+		try {
+			destAddress = InetAddress.getByName(dest);
+		} catch (UnknownHostException e) {
+			logger.warning("Unknown destination: "+dest);
+		}		
 	}
 	
 	public synchronized void close() {
@@ -70,7 +83,7 @@ public class DnsClient extends Thread {
 			startTime = System.currentTimeMillis();
 			try {
 				socket = new MulticastSocket();
-				socket.setTimeToLive(1);
+				//socket.setTimeToLive(1);
 				//socket.setSoTimeout(TIMEOUT_MS);
 			}
 			catch (Exception e) {
@@ -96,7 +109,8 @@ public class DnsClient extends Thread {
 		for (int a=0; a<ATTEMPTS && !closed && error==null; a++) {
 			long endTime = startTime+(a+1)*INTERVAL_MS;
 			try {
-				DatagramPacket dp = new DatagramPacket(qp.bytes, qp.len, InetAddress.getByName(DnsServer.MDNS_ADDRESS), DnsServer.MDNS_PORT);
+				DatagramPacket dp = new DatagramPacket(qp.bytes, qp.len, destAddress, destPort);
+				logger.info("Sending query to "+destAddress.getHostAddress()+":"+destPort);
 				socket.send(dp);
 			}
 			catch (Exception e) {
@@ -169,8 +183,18 @@ public class DnsClient extends Thread {
 		q.name = args.length==0 ? "some.name.local" : args[0];
 		q.rclass = DnsProtocol.CLASS_IN;
 		q.type = DnsProtocol.TYPE_A;
+		if (args.length>=2) {
+			if ("PTR".equals(args[1]))
+				q.type = DnsProtocol.TYPE_PTR;
+			else if ("SRV".equals(args[1]))
+				q.type = DnsProtocol.TYPE_SRV;
+			else
+				logger.warning("Unknown type "+args[1]);
+		}
 		logger.info("Query for "+q.name+" ("+(multiple ? "multiple" : "single")+")");
 		DnsClient c = new DnsClient(q, multiple);
+		if (args.length>=3)
+			c.setDestination(args[2]);
 		c.start();
 		try {
 			c.join();
@@ -178,9 +202,15 @@ public class DnsClient extends Thread {
 			logger.info("Client error: "+c.getError());
 			LinkedList<DnsProtocol.RR> rrs = c.getAnswers();
 			for (DnsProtocol.RR rr : rrs) {
-				if (rr.rdata.length==4)
+				if (rr.type==DnsProtocol.TYPE_A && rr.rdata.length==4)
 					logger.info("Found answer: "+(rr.rdata[0]&0xff)+"."+(rr.rdata[1]&0xff)+"."+(rr.rdata[2]&0xff)+"."+(rr.rdata[3]&0xff));
-				else
+				else if (rr.type==DnsProtocol.TYPE_PTR) {
+					String ns[] = DnsProtocol.ptrFromData(rr.rdata);
+					logger.info("Found answer (ptr): "+Arrays.toString(ns));
+				} else if (rr.type==DnsProtocol.TYPE_SRV) {
+					DnsProtocol.SrvData srv = DnsProtocol.srvFromData(rr.rdata);
+					logger.info("Found answer (srv): "+srv);
+				} else
 					logger.info("Found answer with "+rr.rdata.length+" bytes");
 			}
 		}
