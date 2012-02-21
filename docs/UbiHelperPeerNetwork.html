@@ -1,0 +1,127 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head><body>
+<h1>UbiHelper Peer Network</h1>
+<p>
+
+Chris Greenhalgh, 2012-02-21</p>
+<p>Working/design notes on the peer networking element of the ubihelper service/framework.</p>
+<p>Requirements:</p>
+<ol>
+  <li>Allow nearby devices to share sensor information, e.g. GPS
+location, WiFi scan results, in order to (e.g.) control proximity-based
+interactions</li>
+  <li>Allow nearby devices to share identifying information, e.g.
+Bluetooth MAC address, in order to (e.g.) support identity-based
+detection</li>
+  <li>Allow nearby devices to share other application-specific information, e.g. user actions, shared state<br>
+  </li>
+  <li>Operate (as far as possible) without infrastructure</li>
+  <li>Operate (as far as possible) without internet connectivity</li>
+  <li>Be at least casually secure, i.e. normal usage should not allow
+third parties running the application to access your sensor information</li>
+  <li>Support durable device peering, i.e. information sharing should
+continue to work without further reconfiguration across a range of
+"anticipated" challenges, including re-starting the application,
+re-starting the device and moving between networks.<br>
+  </li>
+  <li>Target Android devices in the first instance<br>
+  </li>
+</ol>
+Alternative deployment scenarios:<br>
+<ol>
+  <li>No GSM/3G (e.g. no availability, no credit, insufficient bandwidth, too expensive)<br>
+=&gt; Use local WiFi - cons.: requires local WiFi APs (see notes below) [Priority]<br>
+  </li>
+  <li>No local WiFi (e.g. no availability, inadequate coverage)<br>
+=&gt; Use GSM/3G - cons.: requires SIM and credit/contract; higher
+latency; typically requires external (internet-connected) server as
+rendezvous/message relay [Defered]<br>
+  </li>
+</ol>
+Local WiFi options/issues:<br>
+<ul>
+  <li>Android devices only support peer-to-peer WiFi from version 4.0 (unless rooted), which is not yet widely available. [Defered]<br>
+  </li>
+  <li>An Android device (at least a Nexus S) operating as a mobile hub does <span style="font-weight: bold;">not</span>
+report a local Wireless network/IP via the WirelessManager, so it is
+not clear how it could take part in multicast discovery. [Defered]<br>
+  </li>
+  <li>=&gt; current compromise requires at least local Access Point(s)
+for device discovery and communication, although internet connectivity
+need not be required/used. <br>
+  </li>
+</ul>
+Other common networking issues:<br>
+<ul>
+  <li>A device on WiFi or GSM/3G typically has a dynamic IP address
+obtained via DHCP, which may change over time and till change when
+moving between wireless networks.</li>
+</ul>
+Strategy:<br>
+<ul>
+  <li>Allow mutual peering of devices, c.f. Bluetooth. This establishes
+a secure association between the devices including mutually identifying
+information and a shared secret.</li>
+  <li>Peering requires a two-way exchange between the devices, with user involvement (initiation or approval).</li>
+  <ul>
+    <li>A trusted service could do this on behalf of the device in an (at least partially) internet connected scenario.</li>
+    <li>Can be established directly between devices (as with Bluetooth)
+over a local communication channel: WiFi [Priority] or Bluetooth or
+RFID or audio or mutual-visual</li>
+  </ul>
+  <li>Local peering requires</li>
+  <ul>
+    <li>Initial discovery of compatible devices<br>
+=&gt; mDNS Service Discovery PTR query for "_ubihelper._tcp.local",
+which returns a domain name including a leading instance name (plus the
+service name and domain name, often the same), e.g. "Chriss Nexus S
+Phone._ubihelper._tcp.local" (mDNS says we should do some multicast
+negotiation at the start to ensure our name is unique, adding or
+incrementing a trailing number as required, but in our case that might
+mean changing name every time we skip network, which is a bit
+annoying... After the initial discovery we'll switch to a durable name
+(e.g. based on MAC address) for re-discovery (in lieu of Reverse ARP
+from an application on an un-rooted phone)... so by remembering
+responding IP during initial peering we can at least make something
+workable for now)</li>
+    <li>=&gt; mDNS SRV query for discovered service, case (1) standard
+mDNS, lookup of nominally unique name including service name, in our
+case&nbsp; targetted at responding IP to avoid ambiguity in initial
+workaround implementation (original usage of SRV records) or case (2)
+lookup of generic service name/domain, but targetted device IP (cached
+or re-discovered); in either case, returns target name (could be IP in
+our case) and port&nbsp;</li>
+    <li>Sending of peer request to discovered service instance (IP and
+port), including first phase of DH key exchange or new passcode
+encrypted secure token (may include identification information for peer record)<br>
+    </li>
+    <li>Notification of user with option to accept or reject request, typically requiring independent entry of passcode from initiating device (typically include identification information for peer record)<br>
+    </li>
+    <li>Response to initiator and update of initiator peer record</li>
+  </ul>
+  <li>Once peered, communication requires</li>
+  <ul>
+    <li>(cached IP/fallback) Reverse-ARP-style IP recovery - e.g. by
+mDNS lookup of A record of domain based on WiFi MAC, e.g.
+"000000000000._reversearp._udp.local" (Could be PTR lookup but that
+should then resolve to (dynamic) local domain name)<br>
+    </li>
+    <li>(cached port/fallback) SRV query for generic service
+name/domain targetted to device IP =&gt; target (should be unnecessary)
+and port</li>
+    <li>connection establishment to IP and port, authenticated using shared secret</li>
+    <ul>
+      <li>could be sequence of HTTP requests, or TCP connection used for multiple message exchange</li>
+      <li>[IP and port could be an internet service proxy for the
+device, probably with its own shared secret, but otherwise could be the
+same]<br>
+      </li>
+    </ul>
+  </ul>
+</ul>
+Open issues:<br>
+<ul>
+  <li>Currently using a nasty and incomplete mDNS implementation; could change to an established one, e.g. JmDNS...</li>
+</ul>
+<br>
+</body></html>
