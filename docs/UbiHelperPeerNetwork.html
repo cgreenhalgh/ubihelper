@@ -84,6 +84,13 @@ annoying... After the initial discovery we'll switch to a durable name
 from an application on an un-rooted phone)... so by remembering
 responding IP during initial peering we can at least make something
 workable for now)</li>
+    <li>Note: Name could be based on (a) Bluetooth device name (not
+sure if this can be accessed when Bluetooth disabled)
+(android.bluetooth.BluetoothAdapter.getName() and broadcast
+.ACTION_LOCAL_NAME_CHANGED) and (b) "model name" (e.g. Nexus S)
+(android.os.Build.MODEL) (See also android.os.Build.SERIAL - may not be
+available!) <br>
+    </li>
     <li>=&gt; mDNS SRV query for discovered service, case (1) standard
 mDNS, lookup of nominally unique name including service name, in our
 case&nbsp; targetted at responding IP to avoid ambiguity in initial
@@ -122,6 +129,15 @@ same]<br>
 Open issues:<br>
 <ul>
   <li>Currently using a nasty and incomplete mDNS implementation; could change to an established one, e.g. JmDNS...</li>
+</ul>
+Ongoing use (with established authenticated connection (or HTTP request sequence)):<br>
+<ul>
+  <li>Local list of trusted peers</li>
+  <li>Get cached information about peer (BT MAC, name, ...?)</li>
+  <li>Request channel read from peer (location, compass, ... [state?!])</li>
+  <li>Push channel update to peer</li>
+  <li>Get communication state (state, last update)<br>
+  </li>
 </ul>
 <br>
 </body></html>
