@@ -239,7 +239,6 @@ public class PeerManager {
 		STATE_SRV_DISCOVERY,
 		STATE_SRV_DISCOVERY_FAILED,
 		STATE_SRV_FOUND,
-		STATE_DEBUG,
 		STATE_CONNECTING,
 		STATE_CONNECTED,
 		STATE_CONNECTING_FAILED,
@@ -349,6 +348,9 @@ public class PeerManager {
 		case STATE_SRV_FOUND:
 			connectPeer(pi);
 			break;
+		case STATE_CONNECTED:
+			// create and send peer request message
+			sendPeerRequest(pi);
 		}
 	}
 	private synchronized void connectPeer(PeerInfo pi) {
@@ -496,7 +498,28 @@ public class PeerManager {
 			pi.socketChannel = null;
 		}
 	}
+	private void sendPeerRequest(PeerInfo pi) {
+		// create peer request
+		// pass key
+		// shared secret, encrypted with pass key
+		// local device information
+		
+		// TODO Auto-generated method stub
+		
+	}
+
+	private static class ClientInfo {
+		// connect
+		SocketChannel socketChannel;
+		SelectionKey key;
+		public ClientInfo(SocketChannel socketChannel) {
+			this.socketChannel = socketChannel;
+		}
+	}
 	
+	/** clients */
+	private ArrayList<ClientInfo> clients = new ArrayList<ClientInfo>();
+	/** work around deadlock in doing register in another thread to select */
 	private SelectionKey register(SocketChannel socketChannel, int ops, Object attachment) throws ClosedChannelException {
 		selectorLock.lock();
 		selector.wakeup();
@@ -544,12 +567,12 @@ public class PeerManager {
 									//Toast.makeText(service, "Finish connect...", Toast.LENGTH_SHORT).show();
 									// Change at some point...
 									Log.d(TAG,"finishConnect to "+pi.src.getHostAddress()+":"+pi.port);
-									pi.socketChannel.register(selector, 0);
 									boolean done = pi.socketChannel.finishConnect();
 									//Log.d(TAG,"finishConnect done="+done);
 									if (done) {
 										pi.state = PeerState.STATE_CONNECTED;
 										pi.detail = null;
+										pi.key = pi.socketChannel.register(selector, SelectionKey.OP_READ, pi);
 									}
 									else
 										pi.detail = "finishConnect returned false";
@@ -571,14 +594,20 @@ public class PeerManager {
 							if (socketChannel==null) {
 								Log.d(TAG,"Event on serverSocketChannel but accept returned null");
 								continue;
-							}
+							}							
 							socketChannel.configureBlocking(false);
 							//Toast.makeText(service, "Accepted connect", Toast.LENGTH_SHORT).show();
-							// TODO
+							ClientInfo ci = new ClientInfo(socketChannel);
+							ci.key = ci.socketChannel.register(selector, SelectionKey.OP_READ, ci);
+							clients.add(ci);
 							Log.d(TAG,"Accepted new connection from "+socketChannel.socket().getInetAddress().getHostAddress()+":"+socketChannel.socket().getPort());
 						} catch (IOException e) {
 							Log.w(TAG,"Error accepted new connection: "+e.getMessage());
 						}						
+					}
+					else if (obj instanceof ClientInfo) {
+						ClientInfo ci = (ClientInfo)obj;
+						// ...
 					}
 				}
 			}
