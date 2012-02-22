@@ -36,6 +36,11 @@
                 android:title="@string/wifidisc_preference_title"
                 android:summary="@string/wifidisc_preference_summary" />
 
+        <EditTextPreference 
+		    android:key="wifidisc_name"
+		    android:title="@string/wifidisc_name_preference_title" 
+		    />
+        
 <!-- 
 		<EditTextPreference 
 		    android:key="http_port"

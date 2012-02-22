@@ -9,6 +9,7 @@ import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 
 import uk.ac.horizon.ubihelper.DnsProtocol.SrvData;
+import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -36,6 +37,11 @@ public class WifiDiscoveryManager {
 	private WifiManager wifi;
 	private WifiManager.WifiLock wifiLock = null;
 	private WifiManager.MulticastLock multicastLock = null;
+	// default device name
+	private String deviceName;
+	private DnsProtocol.RR ptrRR;
+//	private BluetoothAdapter bluetooth;
+	private BroadcastReceiver deviceNameReceiver = new DeviceNameReceiver();
 	
 	public WifiDiscoveryManager(Service service) {
 		this.service = service;
@@ -53,6 +59,10 @@ public class WifiDiscoveryManager {
 		}
 		wifiLock = wifi.createWifiLock(wifiMode, "ubihelper-wifidisc");
 		multicastLock = wifi.createMulticastLock("ubihelper-wifidisc");
+
+		// leave name (and any bluetooth stuff) to Preferences
+//		bluetooth = BluetoothAdapter.getDefaultAdapter();
+		deviceName = service.getDeviceName();
 	}
 	
 	public synchronized void setEnabled(boolean enabled) {
@@ -75,6 +85,7 @@ public class WifiDiscoveryManager {
 	
 	private synchronized void disableInternal() {
 		service.unregisterReceiver(updateReceiver);
+		service.unregisterReceiver(deviceNameReceiver);
 		if (dnsServer!=null) {
 			dnsServer.close();
 			dnsServer = null;
@@ -90,11 +101,29 @@ public class WifiDiscoveryManager {
 		filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
 		service.registerReceiver(updateReceiver, filter);
 		wifiLock.acquire();
+		
+		IntentFilter nameFilter = new IntentFilter(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED);
+		nameFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+		nameFilter.addAction(MainPreferences.ACTION_NAME_CHANGED);
+		service.registerReceiver(deviceNameReceiver, nameFilter);
+
 		//multicastLock.acquire();
 		//Log.d(TAG, "Multicast lock held: "+multicastLock.isHeld());
 		//dnsServer = new DnsServer();
 		//dnsServer.start();
 		updateDnsServer();
+	}
+	
+	private class DeviceNameReceiver extends BroadcastReceiver {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			synchronized (this) {
+				String oldName = deviceName;
+				deviceName = service.getDeviceName();
+				if (!oldName.equals(deviceName))
+					updateDnsServerNameRecords();
+			}
+		}
 	}
 
 	public synchronized void updateDnsServer() {
@@ -133,15 +162,9 @@ public class WifiDiscoveryManager {
 			addr[2]= (byte)((ip >> 16) & 0xff);
 			addr[3]= (byte)((ip >> 24) & 0xff);
 			
-			InetAddress inet;
-			try {
-				// multicast seems to need the interface set explicitly to work
-				inet = InetAddress.getByName(WifiStatusActivity.ip2string(ip));
-				NetworkInterface ni = NetworkInterface.getByInetAddress(inet);
+			NetworkInterface ni = DnsUtils.getNetworkInterface(ip);
+			if (ni!=null)
 				dnsServer.setNeworkInterface(ni);
-			} catch (Exception e) {
-				Log.w(TAG, "Error updating network interface: "+e.getMessage());
-			}
 			dnsServer.start();
 			
 			String name = getDomainNameForMac(mac);
@@ -150,17 +173,13 @@ public class WifiDiscoveryManager {
 					DnsProtocol.CLASS_IN, DEFAULT_TTL, addr));
 
 			// TODO port
-			String servicename = UBIHELPER_SERVICE_NAME+"."+TCP_SERVICE_NAME+".local";
+			String servicename = DnsUtils.getServiceDiscoveryName();
 			SrvData srv = new SrvData(1, 1, 8180, name);
 			Log.d(TAG,"Discoverable "+name+" as "+servicename);
 			dnsServer.add(new DnsProtocol.RR(servicename, DnsProtocol.TYPE_SRV, 
 					DnsProtocol.CLASS_IN, DEFAULT_TTL, DnsProtocol.srvToData(srv)));
 
-			// TODO name
-			String instancename = "Ubihelper";
-			Log.d(TAG,"Discoverable "+name+" as "+instancename+" "+servicename);
-			dnsServer.add(new DnsProtocol.RR(servicename, DnsProtocol.TYPE_PTR, 
-					DnsProtocol.CLASS_IN, DEFAULT_TTL, DnsProtocol.ptrToData(instancename, servicename)));
+			updateDnsServerNameRecords();
 
 			// TODO other discoverable namespaces, e.g. Bluetooth MAC, IMEI, nick-name
 		}
@@ -170,6 +189,21 @@ public class WifiDiscoveryManager {
 		}
 	}
 	
+	public synchronized void updateDnsServerNameRecords() {
+		if (dnsServer==null)
+			return;
+		if (ptrRR!=null) {
+			dnsServer.remove(ptrRR);
+			ptrRR = null;
+		}
+		String servicename = DnsUtils.getServiceDiscoveryName();
+		String instancename = deviceName;
+		Log.d(TAG,"Discoverable as "+instancename+" "+servicename);
+		ptrRR = new DnsProtocol.RR(servicename, DnsProtocol.TYPE_PTR, 
+				DnsProtocol.CLASS_IN, DEFAULT_TTL, DnsProtocol.ptrToData(instancename, servicename));
+		dnsServer.add(ptrRR);
+	}
+
 	public static String getDomainNameForMac(String mac) {
 		return mac.replace(":", "")+".wifimac._ubihelper.local";
 	}

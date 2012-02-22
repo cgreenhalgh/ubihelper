@@ -13,6 +13,7 @@ import org.json.JSONTokener;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -109,6 +110,17 @@ public class Service extends android.app.Service {
 	private boolean getWifiDiscoverable() {
 		boolean wifidisc = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(MainPreferences.WIFIDISC_PREFERENCE, false);
 		return wifidisc;
+	}
+	public String getDeviceName() {
+		String name = PreferenceManager.getDefaultSharedPreferences(this).getString(MainPreferences.WIFIDISC_NAME_PREFERENCE, null);
+		// defaults...
+		if (name==null) {
+			BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
+			name = bluetooth.getName();
+			if (name==null)
+				name = android.os.Build.MODEL;
+		}
+		return name;
 	}
 
 	@Override

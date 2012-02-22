@@ -54,6 +54,10 @@ public class DnsServer extends Thread {
 		}
 	}
 	public synchronized void add(DnsProtocol.RR r) {
+		remove(r);
+		rrs.add(r);
+	}
+	public synchronized void remove(DnsProtocol.RR r) {
 		for (int i=0; i<rrs.size(); i++) {
 			DnsProtocol.RR r2 = rrs.get(i);
 			if (r2.name.equals(r.name) && r2.rclass==r.rclass && r2.type==r.type) {
@@ -61,8 +65,7 @@ public class DnsServer extends Thread {
 				rrs.remove(i);
 				i--;
 			}
-		}
-		rrs.add(r);
+		}		
 	}
 	public synchronized void clear() {
 		rrs.clear();
@@ -186,7 +189,7 @@ public class DnsServer extends Thread {
 		r.name = "_ubihelper._tcp.local";
 		r.rclass = DnsProtocol.CLASS_IN;
 		r.type = DnsProtocol.TYPE_PTR;
-		r.rdata = DnsProtocol.ptrToData("Some instance", "_ubihelper._tcp.local");
+		r.rdata = DnsProtocol.ptrToData("Some instance", DnsUtils.getServiceDiscoveryName());
 		server.add(r);
 		r = new DnsProtocol.RR();
 		r.name = "_ubihelper._tcp.local";

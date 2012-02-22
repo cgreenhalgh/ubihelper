@@ -18,5 +18,6 @@
     <string name="wifidisc_preference_title">Enable Wifi Discovery</string>
     <string name="wifidisc_preference_summary">Allow device to be discovered over wifi</string>
     <string name="wifistatus_option_title">Wifi Status</string>
+    <string name="wifidisc_name_preference_title">Public device name</string>
 
 </resources>

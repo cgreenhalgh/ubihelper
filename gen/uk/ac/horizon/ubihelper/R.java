@@ -51,6 +51,7 @@ public final class R {
         public static final int run_preference_title=0x7f050003;
         public static final int test_app_name=0x7f05000c;
         public static final int test_button=0x7f05000b;
+        public static final int wifidisc_name_preference_title=0x7f050011;
         public static final int wifidisc_preference_summary=0x7f05000f;
         public static final int wifidisc_preference_title=0x7f05000e;
         public static final int wifidisc_preferences=0x7f05000d;

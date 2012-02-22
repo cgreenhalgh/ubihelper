@@ -37,11 +37,22 @@ public class DnsClient extends Thread {
 	private NetworkInterface networkInterface;
 	private InetAddress destAddress;
 	private int destPort = DnsServer.MDNS_PORT;
+	private OnChange onChange = null;
+	// Note: for testing, false; for real use, true!
+	private boolean disableLoopback = false;
+	
+	public static interface OnChange {
+		void onAnswer(DnsProtocol.RR rr);
+		void onComplete(String error);
+	}
 	
 	public DnsClient(DnsProtocol.Query query, boolean multiple) {
 		this.query = query;
 		this.multiple = multiple;
 		setDestination(DnsServer.MDNS_ADDRESS);
+	}
+	public synchronized void setOnChange(OnChange onChange) {
+		this.onChange = onChange;
 	}
 	public synchronized void setDestination(String dest) {
 		try {
@@ -90,6 +101,7 @@ public class DnsClient extends Thread {
 			startTime = System.currentTimeMillis();
 			try {
 				socket = new MulticastSocket();
+				socket.setLoopbackMode(disableLoopback );
 				//socket.setTimeToLive(1);
 				//socket.setSoTimeout(TIMEOUT_MS);
 				if (networkInterface!=null) {
@@ -158,6 +170,15 @@ public class DnsClient extends Thread {
 								if (!known) {
 									answers.add(r);
 									logger.info("Found answer "+r);
+									if (onChange!=null) {
+										try {
+											onChange.onAnswer(r);
+										}
+										catch (Exception e) {
+											logger.warning("Error on onChange.onAnswer: "+e.getMessage());
+											/* ignore */
+										}
+									}
 									if (!multiple)
 										break done;
 								}
@@ -175,6 +196,15 @@ public class DnsClient extends Thread {
 		synchronized (this) {
 			done = true;
 			closeInternal();			
+		}
+		if (onChange!=null) {
+			try {
+				onChange.onComplete(error);
+			}
+			catch (Exception e) {
+				logger.warning("Error on onChange.onComplete: "+e.getMessage());
+				/* ignore */
+			}
 		}
 	}
 
