@@ -51,6 +51,9 @@ public class DnsClient extends Thread {
 		this.multiple = multiple;
 		setDestination(DnsServer.MDNS_ADDRESS);
 	}
+	public synchronized DnsProtocol.Query getQuery() {
+		return query;
+	}
 	public synchronized void setOnChange(OnChange onChange) {
 		this.onChange = onChange;
 	}
@@ -61,10 +64,18 @@ public class DnsClient extends Thread {
 			logger.warning("Unknown destination: "+dest);
 		}		
 	}
+	public synchronized void setDestination(InetAddress dest) {
+		destAddress = dest;
+	}
+	public synchronized InetAddress getDestination() {
+		return destAddress;
+	}
 	public synchronized void setNetworkInterface(NetworkInterface ni) {
 		networkInterface = ni;
 	}
-	
+	public synchronized long getAge() {
+		return System.currentTimeMillis()-startTime;
+	}
 	public synchronized void close() {
 		closed = true;
 		closeInternal();

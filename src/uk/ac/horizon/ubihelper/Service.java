@@ -70,13 +70,14 @@ public class Service extends android.app.Service {
 
 		startForeground(RUNNING_ID, notification);	
 		
-		Log.d(TAG,"Create sensor channels...");
 		// sensors
-		SensorChannel magnetic = new SensorChannel("magnetic", this, Sensor.TYPE_MAGNETIC_FIELD);
-		channels.add(magnetic);
-		SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
-		channels.add(accelerometer);
-
+		if (!isEmulator()) {
+			Log.d(TAG,"Create sensor channels...");
+			SensorChannel magnetic = new SensorChannel("magnetic", this, Sensor.TYPE_MAGNETIC_FIELD);
+			channels.add(magnetic);
+			SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
+			channels.add(accelerometer);
+		}
 		Log.d(TAG,"Create http server...");
 		
 		// http server
@@ -85,15 +86,24 @@ public class Service extends android.app.Service {
 		httpListener = new HttpListener(this, httpPort);
 		httpListener.start();
 		
+		// peer communication
+		peerManager = new PeerManager(this);
+		int serverPort = peerManager.getServerPort();
+		
 		// wifi discovery
 		wifiDiscoveryManager = new WifiDiscoveryManager(this);
 		wifiDiscoverable = getWifiDiscoverable();
+		wifiDiscoveryManager.setServerPort(serverPort);
 		wifiDiscoveryManager.setEnabled(wifiDiscoverable);
 		
-		// peer communication
-		peerManager = new PeerManager(this);
-		
 		Log.d(TAG,"onCreate() finished");
+	}
+	public static boolean isEmulator() {
+		String model = android.os.Build.MODEL;
+		Log.d(TAG,"Model: "+model);
+		if ("sdk".equals(model) || "google_sdk".equals(model))
+			return true;
+		return false;
 	}
 	private int getPort() {
 		int port = DEFAULT_PORT;
@@ -120,7 +130,8 @@ public class Service extends android.app.Service {
 		// defaults...
 		if (name==null) {
 			BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
-			name = bluetooth.getName();
+			if (bluetooth!=null) 
+				name = bluetooth.getName();
 			if (name==null)
 				name = android.os.Build.MODEL;
 		}

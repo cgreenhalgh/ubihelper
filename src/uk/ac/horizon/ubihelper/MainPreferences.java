@@ -60,19 +60,19 @@ public class MainPreferences extends PreferenceActivity {
         wifiNamePref = (EditTextPreference)this.getPreferenceScreen().findPreference(WIFIDISC_NAME_PREFERENCE);
         if (wifiNamePref.getText()==null || wifiNamePref.getText().length()==0 || android.os.Build.MODEL.equals(wifiNamePref.getText())) {
             String deviceName = android.os.Build.MODEL;
+            wifiNamePref.setSummary("Defaults to device model ("+deviceName+")");
             bluetooth = BluetoothAdapter.getDefaultAdapter();
-            String btname = bluetooth.getName();
-            if (btname!=null && !android.os.Build.MODEL.equals(btname)) {
-                wifiNamePref.setSummary("Set to bluetooth name ("+btname+")");
-            	deviceName = btname;
-            }
-            else {
-                wifiNamePref.setSummary("Defaults to device model ("+deviceName+")");
+            if (bluetooth!=null) {
+	            String btname = bluetooth.getName();
+	            if (btname!=null && !android.os.Build.MODEL.equals(btname)) {
+	                wifiNamePref.setSummary("Set to bluetooth name ("+btname+")");
+	            	deviceName = btname;
+	            }
+	            IntentFilter btfilter = new IntentFilter(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED);
+	            btfilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+	            registerReceiver(bluetoothReciever, btfilter);
             }
             wifiNamePref.setText(deviceName);
-            IntentFilter btfilter = new IntentFilter(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED);
-            btfilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(bluetoothReciever, btfilter);
         }
         else
         	wifiNamePref.setSummary(wifiNamePref.getText());

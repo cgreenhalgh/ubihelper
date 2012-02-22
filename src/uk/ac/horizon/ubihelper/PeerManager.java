@@ -5,14 +5,27 @@ package uk.ac.horizon.ubihelper;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 import uk.ac.horizon.ubihelper.DnsProtocol.RR;
+import uk.ac.horizon.ubihelper.PeerManager.SearchInfo;
 import android.content.Intent;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
+import android.widget.Toast;
 
 /** Manages all interactions with Peers
  * 
@@ -28,6 +41,10 @@ public class PeerManager {
 	private WifiManager wifi = null;
 	private DnsClient.OnChange onSearchChangeListener = new OnSearchChangeListener();
 	private boolean searchStarted = false;
+	private ServerSocketChannel serverSocketChannel;
+	private int serverPort;
+	private Selector selector;
+	private Thread selectorThread;
 	
 	public static class SearchInfo {
 		public String name;
@@ -39,13 +56,43 @@ public class PeerManager {
 	
 	public static final String ACTION_SEARCH_STARTED = "uk.ac.horizon.ubihelper.action.SEARCH_STARTED";
 	public static final String ACTION_SEARCH_STOPPED = "uk.ac.horizon.ubihelper.action.SEARCH_STOPPED";
+	/** Broadcast, has extra NAME & SOURCEIP */
 	public static final String ACTION_PEER_DISCOVERED = "uk.ac.horizon.ubihelper.action.PEER_DISCOVERED";
+	/** Broadcast, has extra NAME, SOURCEIP, PEER_STATE & (optionally) PORT */
+	public static final String ACTION_PEER_STATE_CHANGED = "uk.ac.horizon.ubihelper.action.PEER_STATE_CHANGED";
 	public static final String EXTRA_NAME = "uk.ac.horizon.ubihelper.extra.NAME";
 	public static final String EXTRA_SOURCEIP = "uk.ac.horizon.ubihelper.extra.SOURCEIP";
+	public static final String EXTRA_PORT = "uk.ac.horizon.ubihelper.extra.PORT";
+	public static final String EXTRA_PEER_STATE = "uk.ac.horizon.ubihelper.extra.PEER_STATE";
+	public static final String EXTRA_DETAIL = "uk.ac.horizon.ubihelper.extra.DETAIL";
+	public static final String ACTION_PEERS_CHANGED = "uk.ac.horizon.ubihelper.action.PEERS_CHANGED";
+	private static final long MAX_QUERY_AGE = 15000;
 	
 	public PeerManager(Service service) {
 		this.service = service;
 		wifi = (WifiManager)service.getSystemService(Service.WIFI_SERVICE);
+		
+		try {
+			serverSocketChannel = ServerSocketChannel.open();
+			ServerSocket ss = serverSocketChannel.socket();
+			ss.bind(new InetSocketAddress(InetAddress.getByName("0.0.0.0"),0));
+			serverPort = ss.getLocalPort();
+			serverSocketChannel.configureBlocking(false);
+		} catch (IOException e) {
+			Log.w(TAG,"Error opening ServerSocketChannel: "+e.getMessage());
+		}
+		try {
+			selector = Selector.open();
+			if (serverSocketChannel!=null)
+				serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, serverSocketChannel);
+			selectorThread = new SelectorThread();
+			selectorThread.start();
+		} catch (IOException e) {
+			Log.w(TAG,"Error opening Selector: "+e.getMessage());
+		}
+	}
+	public synchronized int getServerPort() {
+		return serverPort;
 	}
 	public synchronized void close() {
 		closed = true;
@@ -53,6 +100,18 @@ public class PeerManager {
 	}
 	private synchronized void closeInternal() {		
 		closeSearchInternal();
+		if (serverSocketChannel!=null) {
+			try {
+				serverSocketChannel.close();
+			} catch (IOException e) {
+			}
+			serverSocketChannel = null;
+		}
+		try {
+			if (selector!=null)
+				selector.close();
+		} catch (IOException e) {
+		}
 	}
 	private synchronized void closeSearchInternal() {		
 		if (searchClient!=null) {
@@ -156,4 +215,325 @@ public class PeerManager {
 		}
 		return null;
 	}
+	/** current queries - by name */
+	private HashMap<String,ArrayList<DnsClient>> dnsClients = new HashMap<String,ArrayList<DnsClient>>();
+	private DnsClient getDnsClient(String name, int type, InetAddress dest) {
+		ArrayList<DnsClient> dcs = dnsClients.get(name);
+		for (int i=0; dcs!=null && i<dcs.size(); i++) {
+			DnsClient dc  = dcs.get(i);
+			if (dc.getAge() > MAX_QUERY_AGE) {
+				dcs.remove(i);
+				i--;
+				continue;
+			}
+			if (type==dc.getQuery().type && (dest==null || dest.equals(dc.getDestination())))
+				return dc;
+		}
+		return null;
+	}
+	/** peer state */
+	public static enum PeerState {
+		STATE_SEARCHED_ADD,
+		STATE_SRV_DISCOVERY,
+		STATE_SRV_DISCOVERY_FAILED,
+		STATE_SRV_FOUND,
+		STATE_DEBUG,
+		STATE_CONNECTING,
+		STATE_CONNECTED,
+		STATE_CONNECTING_FAILED,
+	}
+	/** peer info */
+	public static class PeerInfo implements Cloneable {
+		public int id = -1;
+		public PeerState state;
+		// Search
+		public String instanceName;
+		public InetAddress src;
+		// SRV
+		public int port = 0;
+		// connect
+		SocketChannel socketChannel;
+		SelectionKey key;
+		
+		// debug
+		public String detail;
+		
+		PeerInfo(String instanceName, InetAddress src) {
+			this.instanceName = instanceName;
+			this.src = src;
+			state = PeerState.STATE_SEARCHED_ADD;
+		}		
+		PeerInfo(PeerInfo pi) {
+			id = pi.id;
+			state = pi.state;
+			instanceName = pi.instanceName;
+			src = pi.src;
+			port = pi.port;
+			detail = pi.detail;
+		}
+	}
+	private void broadcastPeerState(PeerInfo pi) {
+		Intent i = new Intent(ACTION_PEER_STATE_CHANGED);
+		i.putExtra(EXTRA_PEER_STATE, pi.state.ordinal());
+		i.putExtra(EXTRA_NAME, pi.instanceName);
+		if (pi.detail!=null)
+			i.putExtra(EXTRA_DETAIL, pi.detail);
+		i.putExtra(EXTRA_SOURCEIP, pi.src.getHostAddress());
+		if (pi.port!=0)
+			i.putExtra(EXTRA_PORT, pi.port);
+		service.sendBroadcast(i);
+	}
+	private ArrayList<PeerInfo> peers = new ArrayList<PeerInfo>();
+
+	/** public API - list peers */
+	public synchronized List<PeerInfo> getPeers() {
+		ArrayList<PeerInfo> rpeers = new ArrayList<PeerInfo>();
+		for (PeerInfo pi : peers) {
+			rpeers.add(new PeerInfo(pi));
+		}
+		return rpeers;
+	}
+	/** public API - get info on peer */
+	public synchronized PeerInfo getPeer(Intent i) {
+		String sourceip = i.getExtras().getString(EXTRA_SOURCEIP);
+		String name = i.getExtras().getString(EXTRA_NAME);
+		for (PeerInfo pi : peers) {
+			if (pi.instanceName.equals(name) && pi.src.getHostAddress().equals(sourceip))
+				return pi;
+		}
+		return null;
+	}
+	/** public API - matches */
+	public static synchronized boolean matches(PeerInfo pi, Intent i) {
+		String sourceip = i.getExtras().getString(EXTRA_SOURCEIP);
+		String name = i.getExtras().getString(EXTRA_NAME);
+		if (pi.instanceName.equals(name) && pi.src.getHostAddress().equals(sourceip))
+			return true;
+		return false;
+	}
+	/** public API - matches */
+	public static synchronized boolean matches(PeerInfo pi, SearchInfo si) {
+		if (pi.instanceName.equals(si.name) && pi.src.equals(si.src))
+			return true;
+		return false;
+	}
+	/** public API - start adding a discovered peer */
+	public synchronized void addPeer(SearchInfo peerInfo) {
+		// already in progress?
+		for (PeerInfo pi : peers) {
+			if (matches(pi, peerInfo)) {
+				// kick?
+				return;
+			}
+		}
+		PeerInfo pi = new PeerInfo(peerInfo.name, peerInfo.src);
+		peers.add(pi);
+		Intent i = new Intent(ACTION_PEERS_CHANGED);
+		service.sendBroadcast(i);
+		updatePeer(pi);
+	}
+	private synchronized void updatePeer(PeerInfo pi) {
+		switch(pi.state) {
+		case STATE_SEARCHED_ADD:
+			startSrvDiscovery(pi);
+			break;
+		case STATE_SRV_DISCOVERY_FAILED:
+		case STATE_CONNECTING_FAILED:
+			broadcastPeerState(pi);
+			removePeer(pi);
+			break;
+		case STATE_SRV_FOUND:
+			connectPeer(pi);
+			break;
+		}
+	}
+	private synchronized void connectPeer(PeerInfo pi) {
+		if (pi.src==null) {
+			pi.state = PeerState.STATE_CONNECTING_FAILED;
+			pi.detail = "IP unknown";
+			updatePeer(pi);
+			return;
+		}
+		pi.state = PeerState.STATE_CONNECTING;
+		pi.detail = "connectPeer()";
+		try {
+			pi.detail = "1";
+			pi.socketChannel = SocketChannel.open();
+			pi.detail = "2";
+			pi.socketChannel.configureBlocking(false);
+			pi.detail = "3";
+			//Toast.makeText(service, "Connect...", Toast.LENGTH_SHORT).show();
+			boolean done = pi.socketChannel.connect(new InetSocketAddress(pi.src, pi.port));
+			pi.detail = "4 (done="+done+")";
+			if (done) {
+				//Toast.makeText(service, "Connected!", Toast.LENGTH_SHORT).show();
+				pi.state = PeerState.STATE_CONNECTED;
+				pi.detail = "Connected immediately";
+			}
+			else {
+				//Toast.makeText(service, "waiting...", Toast.LENGTH_SHORT).show();
+				pi.detail = "Waiting for connect";
+				pi.key = pi.socketChannel.register(selector, SelectionKey.OP_CONNECT, pi);
+			}
+			broadcastPeerState(pi);
+			if (done) {
+				updatePeer(pi);
+			}
+			return;
+		} catch (Exception e) {
+			// Not just IOExceptions?!
+			Log.w(TAG,"Problem connecting to peer "+pi.src.getHostAddress()+":"+pi.port+": "+e.getMessage());
+			//Toast.makeText(service, "Error connecting: "+e, Toast.LENGTH_LONG).show();
+			pi.state = PeerState.STATE_CONNECTING_FAILED;
+			pi.detail = e.getMessage();
+			updatePeer(pi);
+		}		
+	}
+	private synchronized void startSrvDiscovery(final PeerInfo pi) {
+		// 1: do SRV discovery to get IP/Port
+		String name = DnsUtils.getServiceDiscoveryName();
+		DnsClient dc = getDnsClient(name, DnsProtocol.TYPE_SRV, pi.src);
+		if (dc==null) {
+			// start again
+			DnsProtocol.Query query = new DnsProtocol.Query();
+			query.name = DnsUtils.getServiceDiscoveryName();
+			query.type = DnsProtocol.TYPE_SRV;
+			query.rclass = DnsProtocol.CLASS_IN;
+			final DnsClient fdc = new DnsClient(query, false);
+			NetworkInterface ni = getNetworkInterface();
+			if (ni!=null)
+				fdc.setNetworkInterface(ni);
+			fdc.setDestination(pi.src);
+			fdc.setOnChange(new DnsClient.OnChange() {
+				public void onAnswer(RR rr) {
+				}
+				public void onComplete(String error) {
+					srvDiscoveryComplete(fdc, pi.src);
+				}
+			});
+			ArrayList<DnsClient> dcs = dnsClients.get(name);
+			if (dcs==null) {
+				dcs = new ArrayList<DnsClient>();
+				dnsClients.put(name, dcs);
+			}
+			dcs.add(fdc);
+			pi.state = PeerState.STATE_SRV_DISCOVERY;
+			broadcastPeerState(pi);
+			fdc.start();
+			return;
+		}
+		else {
+			pi.state = PeerState.STATE_SRV_DISCOVERY;
+			// handle result? (not too old, but may have finished, or not)
+			boolean done = dc.getDone();
+			if (done) {
+				srvDiscoveryComplete(dc, pi.src);
+			}
+			else
+				broadcastPeerState(pi);
+			// otherwise will be done...
+			return;
+		}
+	}
+		// 2: initiate connection
+		// 3: generate and send peer request
+		// 4: wait for and handle response 		
+	private synchronized void srvDiscoveryComplete(DnsClient dc, InetAddress src) {
+		// copy peers in case of delete
+		ArrayList<PeerInfo> peers2 = new ArrayList<PeerInfo>();
+		peers2.addAll(peers);
+		for (int i=0; i<peers2.size(); i++) {
+			PeerInfo pi = peers2.get(i);
+			if (pi.state==PeerState.STATE_SRV_DISCOVERY && pi.src.equals(src)) {
+				LinkedList<DnsProtocol.RR> as = dc.getAnswers();
+				if (as.size()==0) {
+					pi.state = PeerState.STATE_SRV_DISCOVERY_FAILED;
+					updatePeer(pi);
+				} else {
+					try {
+						DnsProtocol.SrvData srv = DnsProtocol.srvFromData(as.get(0).rdata);
+						pi.state = PeerState.STATE_SRV_FOUND;
+						pi.port = srv.port;
+						if (!srv.target.equals(src.getHostAddress())) {
+							Log.w(TAG,"SRV returned different IP: "+srv.target+" vs "+src.getHostAddress());
+						}
+						updatePeer(pi);
+					} catch (IOException e) {
+						Log.w(TAG,"Error parsing SRV data: "+e.getMessage());
+						pi.state = PeerState.STATE_SRV_DISCOVERY_FAILED;					
+						updatePeer(pi);
+					}					
+				}
+			}
+		}
+	}
+	private synchronized void removePeer(PeerInfo pi) {
+		if (peers.remove(pi))
+		{
+			Intent i = new Intent(ACTION_PEERS_CHANGED);
+			service.sendBroadcast(i);
+		}
+		if (pi.socketChannel!=null) {
+			try {
+				pi.socketChannel.close();
+			}
+			catch (IOException e) {
+			}
+			pi.socketChannel = null;
+		}
+	}
+	private class SelectorThread extends Thread {
+		public void run() {
+			while (!closed) {
+				try {
+					int i = selector.select();
+				} catch (IOException e) {
+					Log.w(TAG,"doing select(): "+e.getMessage());
+				}
+				Set<SelectionKey> keys = selector.selectedKeys();
+				for (SelectionKey key : keys) {
+					Object obj = key.attachment();
+					if (obj instanceof PeerInfo) {
+						synchronized (PeerManager.this) {
+							PeerInfo pi = (PeerInfo)obj;
+							if (pi.socketChannel!=null && pi.socketChannel.isConnectionPending()) {
+								try {
+									//Toast.makeText(service, "Finish connect...", Toast.LENGTH_SHORT).show();
+									// Change at some point...
+									pi.socketChannel.register(selector, 0);
+									boolean done = pi.socketChannel.finishConnect();
+									if (done) {
+										pi.state = PeerState.STATE_CONNECTED;
+										pi.detail = null;
+									}
+									else
+										pi.detail = "finishConnect returned false";
+									broadcastPeerState(pi);
+									if (done) {
+										updatePeer(pi);
+									}
+								} catch (IOException e) {
+									Log.w(TAG,"Error finishing connect: "+e.getMessage());
+									pi.state = PeerState.STATE_CONNECTING_FAILED;
+									pi.detail = null;
+									updatePeer(pi);
+								}
+							}
+						}
+					} else if (serverSocketChannel!=null && obj==serverSocketChannel) {
+						try {
+							SocketChannel socketChannel = serverSocketChannel.accept();
+							socketChannel.configureBlocking(false);
+							//Toast.makeText(service, "Accepted connect", Toast.LENGTH_SHORT).show();
+							// TODO
+							Log.d(TAG,"Accepted new connection from "+socketChannel.socket().getInetAddress().getHostAddress()+":"+socketChannel.socket().getPort());
+						} catch (IOException e) {
+							Log.w(TAG,"Error accepted new connection: "+e.getMessage());
+						}						
+					}
+				}
+			}
+		}
+	}
+
 }

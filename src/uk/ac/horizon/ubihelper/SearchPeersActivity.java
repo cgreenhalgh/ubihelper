@@ -125,8 +125,11 @@ public class SearchPeersActivity extends ListActivity {
 	
 	// Start adding a peer!
 	protected void startAddPeer(PeerManager.SearchInfo peerInfo) {
-		// TODO Auto-generated method stub
-		
+		if (peerManager!=null)
+			peerManager.addPeer(peerInfo);
+		// UI..
+		Intent i = PeerInfoActivity.getStartActivityIntent(this, peerInfo);
+		startActivity(i);
 	}
 	private Intent getServiceIntent() {		
 		Intent i = new Intent(this.getApplicationContext(), Service.class);
@@ -171,10 +174,10 @@ public class SearchPeersActivity extends ListActivity {
 	private synchronized void startSearch(boolean resumeOnly) {
 		setHeaderText("Search again");
 		if (peerManager==null) {
-			setHeaderText("Search again");
 			return;
 		}
 		// previous records
+		peerInfos.clear();
 		LinkedList<PeerManager.SearchInfo> sis = peerManager.getSearchAnswers();
 		for (PeerManager.SearchInfo si : sis) {
 			peerInfos.add(si);

@@ -42,6 +42,7 @@ public class WifiDiscoveryManager {
 	private DnsProtocol.RR ptrRR;
 //	private BluetoothAdapter bluetooth;
 	private BroadcastReceiver deviceNameReceiver = new DeviceNameReceiver();
+	private int serverPort;
 	
 	public WifiDiscoveryManager(Service service) {
 		this.service = service;
@@ -174,7 +175,7 @@ public class WifiDiscoveryManager {
 
 			// TODO port
 			String servicename = DnsUtils.getServiceDiscoveryName();
-			SrvData srv = new SrvData(1, 1, 8180, name);
+			SrvData srv = new SrvData(1, 1, serverPort, name);
 			Log.d(TAG,"Discoverable "+name+" as "+servicename);
 			dnsServer.add(new DnsProtocol.RR(servicename, DnsProtocol.TYPE_SRV, 
 					DnsProtocol.CLASS_IN, DEFAULT_TTL, DnsProtocol.srvToData(srv)));
@@ -212,5 +213,9 @@ public class WifiDiscoveryManager {
 	public synchronized void close() {
 		closed = true;
 		setEnabled(false);
+	}
+
+	public synchronized void setServerPort(int serverPort) {
+		this.serverPort = serverPort;
 	}
 }
