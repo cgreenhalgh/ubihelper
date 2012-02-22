@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 import uk.ac.horizon.ubihelper.DnsProtocol.RR;
 import uk.ac.horizon.ubihelper.PeerManager.SearchInfo;
@@ -281,7 +282,9 @@ public class PeerManager {
 		i.putExtra(EXTRA_SOURCEIP, pi.src.getHostAddress());
 		if (pi.port!=0)
 			i.putExtra(EXTRA_PORT, pi.port);
+		//Log.d(TAG,"sendBroadcast (peer state)...");
 		service.sendBroadcast(i);
+		//Log.d(TAG,"sendBroadcast done");
 	}
 	private ArrayList<PeerInfo> peers = new ArrayList<PeerInfo>();
 
@@ -357,14 +360,16 @@ public class PeerManager {
 		pi.state = PeerState.STATE_CONNECTING;
 		pi.detail = "connectPeer()";
 		try {
-			pi.detail = "1";
+			//pi.detail = "1";
 			pi.socketChannel = SocketChannel.open();
-			pi.detail = "2";
+			//pi.detail = "2";
 			pi.socketChannel.configureBlocking(false);
-			pi.detail = "3";
+			//pi.detail = "3";
 			//Toast.makeText(service, "Connect...", Toast.LENGTH_SHORT).show();
+			Log.d(TAG,"Connect to "+pi.src.getHostAddress()+":"+pi.port);
 			boolean done = pi.socketChannel.connect(new InetSocketAddress(pi.src, pi.port));
-			pi.detail = "4 (done="+done+")";
+			//Log.d(TAG,"Connect done="+done);
+			//pi.detail = "4 (done="+done+")";
 			if (done) {
 				//Toast.makeText(service, "Connected!", Toast.LENGTH_SHORT).show();
 				pi.state = PeerState.STATE_CONNECTED;
@@ -373,9 +378,13 @@ public class PeerManager {
 			else {
 				//Toast.makeText(service, "waiting...", Toast.LENGTH_SHORT).show();
 				pi.detail = "Waiting for connect";
-				pi.key = pi.socketChannel.register(selector, SelectionKey.OP_CONNECT, pi);
+				//Log.d(TAG,"Register (connect)...");
+				pi.key = register(pi.socketChannel, SelectionKey.OP_CONNECT, pi);
+				//Log.d(TAG,"registered");
 			}
+			//Log.d(TAG,"Broadcast...");
 			broadcastPeerState(pi);
+			//Log.d(TAG,"Broadcast done");
 			if (done) {
 				updatePeer(pi);
 			}
@@ -408,7 +417,11 @@ public class PeerManager {
 				public void onAnswer(RR rr) {
 				}
 				public void onComplete(String error) {
-					srvDiscoveryComplete(fdc, pi.src);
+					service.postTask(new Runnable() {
+						public void run() {
+							srvDiscoveryComplete(fdc, pi.src);							
+						}						
+					});
 				}
 			});
 			ArrayList<DnsClient> dcs = dnsClients.get(name);
@@ -482,11 +495,33 @@ public class PeerManager {
 			pi.socketChannel = null;
 		}
 	}
+	
+	private SelectionKey register(SocketChannel socketChannel, int ops, Object attachment) throws ClosedChannelException {
+		selectorLock.lock();
+		selector.wakeup();
+		try {
+			return socketChannel.register(selector, ops, attachment);
+		} 
+		finally {
+			selectorLock.unlock();
+		}
+	}
+	
+	final ReentrantLock selectorLock = new ReentrantLock();
+	
 	private class SelectorThread extends Thread {
 		public void run() {
 			while (!closed) {
 				try {
+					// nasty register problem - see http://stackoverflow.com/questions/1057224/thread-is-stuck-while-registering-channel-with-selector-in-java-nio-server
+					// ensure other gets chance to complete
+					selectorLock.lock();
+					selectorLock.unlock();
+					//Log.d(TAG,"Select...");
 					int i = selector.select();
+					//Log.d(TAG,"select done with "+i+" ready");
+					if (i==0)
+						continue;
 				} catch (IOException e) {
 					Log.w(TAG,"doing select(): "+e.getMessage());
 				}
@@ -500,8 +535,10 @@ public class PeerManager {
 								try {
 									//Toast.makeText(service, "Finish connect...", Toast.LENGTH_SHORT).show();
 									// Change at some point...
+									Log.d(TAG,"finishConnect...");
 									pi.socketChannel.register(selector, 0);
 									boolean done = pi.socketChannel.finishConnect();
+									Log.d(TAG,"finishConnect done="+done);
 									if (done) {
 										pi.state = PeerState.STATE_CONNECTED;
 										pi.detail = null;
@@ -523,6 +560,10 @@ public class PeerManager {
 					} else if (serverSocketChannel!=null && obj==serverSocketChannel) {
 						try {
 							SocketChannel socketChannel = serverSocketChannel.accept();
+							if (socketChannel==null) {
+								Log.d(TAG,"Event on serverSocketChannel but accept returned null");
+								continue;
+							}
 							socketChannel.configureBlocking(false);
 							//Toast.makeText(service, "Accepted connect", Toast.LENGTH_SHORT).show();
 							// TODO

@@ -140,7 +140,7 @@ public class DnsClient extends Thread {
 		final int ATTEMPTS = 3;
 		final int INTERVAL_MS = 3000;
 		done:
-		for (int a=0; a<ATTEMPTS && !closed && error==null; a++) {
+		for (int a=0; a<ATTEMPTS && !closed && error==null && !done; a++) {
 			long endTime = startTime+(a+1)*INTERVAL_MS;
 			try {
 				DatagramPacket dp = new DatagramPacket(qp.bytes, qp.len, destAddress, destPort);
@@ -154,10 +154,14 @@ public class DnsClient extends Thread {
 				long remaining = endTime-System.currentTimeMillis();
 				if (remaining<=0)
 					break;
+				DatagramPacket rdp = new DatagramPacket(new byte[512], 512);
 				try {
 					socket.setSoTimeout((int)remaining);
-					DatagramPacket rdp = new DatagramPacket(new byte[512], 512);
 					socket.receive(rdp);
+				} catch (Exception e) {
+					logger.warning("Error receiving packet: "+e.toString()); //getMessage());
+				}
+				try {
 					DnsProtocol rp = new DnsProtocol();
 					rp.bytes = rdp.getData();
 					rp.len = rdp.getLength();
@@ -201,7 +205,7 @@ public class DnsClient extends Thread {
 						}
 					}
 				} catch (Exception e) {
-					logger.warning("Error receiving packet: "+e.getMessage());
+					logger.warning("Error processing received packet: "+e.toString()); //getMessage());
 				}
 			}			
 		}

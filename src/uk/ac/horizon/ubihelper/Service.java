@@ -227,6 +227,9 @@ public class Service extends android.app.Service {
 			}
 		});
 	}	
+	boolean postTask(final Runnable task) {
+		return mHandler.post(task);
+	}
 	
 	private String handleRequest(String path, String body) throws HttpError {
 		Log.d(TAG,"handleRequest "+path+" "+body);

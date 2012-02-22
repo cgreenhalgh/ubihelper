@@ -91,7 +91,7 @@ public class SearchPeersActivity extends ListActivity {
 	}
 
 	@Override
-	protected Dialog onCreateDialog(int id, Bundle args) {
+	protected Dialog onCreateDialog(int id) {
 		Dialog dialog = null;
 		switch (id) {
 		case DIALOG_ADD_PEER: {
@@ -118,7 +118,7 @@ public class SearchPeersActivity extends ListActivity {
 			break;
 		}
 		default:
-			dialog = super.onCreateDialog(id, args);				
+			dialog = super.onCreateDialog(id);				
 		}
 		return dialog;
 	}

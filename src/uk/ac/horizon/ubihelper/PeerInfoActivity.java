@@ -59,6 +59,8 @@ public class PeerInfoActivity extends Activity {
 	
 
 	private void refresh(Intent intent) {
+		//Log.d(TAG,"refresh start");
+		// this routine blocks when called from ServiceConnection, presumably because of the call to getPeer
 		boolean ok = false;
 		// fallback values
 		if (getIntent()!=null) {
@@ -68,7 +70,10 @@ public class PeerInfoActivity extends Activity {
 			peerInfoSourceip.setText(sourceip);
 		}
 		if (peerManager!=null && getIntent()!=null) {
+			//Log.d(TAG,"getPeer...");
+			// this call blocks when called from ServiceConnection, presumably because of the lock on getPeer
 			PeerManager.PeerInfo peerInfo = peerManager.getPeer(getIntent());
+			//Log.d(TAG,"getPeer done");
 			if (peerInfo!=null) {
 				peerInfoName.setText(peerInfo.instanceName);
 				peerInfoSourceip.setText(peerInfo.src.getHostAddress());
@@ -99,6 +104,7 @@ public class PeerInfoActivity extends Activity {
 			peerInfoPort.setText("?");			
 			peerInfoDetail.setText("?");			
 		}
+		Log.d(TAG,"refresh complete");
 	}
 
 	private BroadcastReceiver peerChangeListener = new BroadcastReceiver () {
