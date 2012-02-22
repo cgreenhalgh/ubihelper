@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -525,7 +526,14 @@ public class PeerManager {
 				} catch (IOException e) {
 					Log.w(TAG,"doing select(): "+e.getMessage());
 				}
-				Set<SelectionKey> keys = selector.selectedKeys();
+				Set<SelectionKey> keys = null;
+				try {
+					keys = selector.selectedKeys();
+				}
+				catch (ClosedSelectorException e) {
+					Log.d(TAG,"Selector closed - exiting");
+					break;
+				}
 				for (SelectionKey key : keys) {
 					Object obj = key.attachment();
 					if (obj instanceof PeerInfo) {
@@ -535,10 +543,10 @@ public class PeerManager {
 								try {
 									//Toast.makeText(service, "Finish connect...", Toast.LENGTH_SHORT).show();
 									// Change at some point...
-									Log.d(TAG,"finishConnect...");
+									Log.d(TAG,"finishConnect to "+pi.src.getHostAddress()+":"+pi.port);
 									pi.socketChannel.register(selector, 0);
 									boolean done = pi.socketChannel.finishConnect();
-									Log.d(TAG,"finishConnect done="+done);
+									//Log.d(TAG,"finishConnect done="+done);
 									if (done) {
 										pi.state = PeerState.STATE_CONNECTED;
 										pi.detail = null;
