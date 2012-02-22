@@ -4,6 +4,7 @@
 package uk.ac.horizon.ubihelper;
 
 import java.io.IOException;
+import java.net.InetAddress;
 //import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.Vector;
@@ -37,6 +38,7 @@ public class DnsProtocol {
 		public short rclass;
 		public int ttl;
 		public byte rdata[];
+		public InetAddress src;
 		
 		public RR() {}
 		

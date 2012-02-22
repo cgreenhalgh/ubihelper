@@ -43,6 +43,7 @@ public class Service extends android.app.Service {
 	private WifiDiscoveryManager wifiDiscoveryManager;
 	private Handler mHandler;
 	private LinkedList<NamedChannel> channels = new LinkedList<NamedChannel>();
+	private PeerManager peerManager;
 	
 	@Override
 	public void onCreate() {
@@ -89,6 +90,9 @@ public class Service extends android.app.Service {
 		wifiDiscoverable = getWifiDiscoverable();
 		wifiDiscoveryManager.setEnabled(wifiDiscoverable);
 		
+		// peer communication
+		peerManager = new PeerManager(this);
+		
 		Log.d(TAG,"onCreate() finished");
 	}
 	private int getPort() {
@@ -132,6 +136,8 @@ public class Service extends android.app.Service {
 		// tidy up notification
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancel(RUNNING_ID);	
+		if (peerManager!=null)
+			peerManager.close();
 		if (httpListener!=null)
 			httpListener.close();
 		if (wifiDiscoveryManager!=null)
@@ -177,6 +183,11 @@ public class Service extends android.app.Service {
 			wifiDiscoveryManager.setEnabled(wifiDiscoverable);
 		}
 	}
+	/** public API - get PeerManager */
+	public PeerManager getPeerManager() {
+		return peerManager;
+	}
+	
 	/** post request from another thread */
 	public boolean postRequest(final String path, final String body, final HttpContinuation continuation) {
 		return mHandler.post(new Runnable() {

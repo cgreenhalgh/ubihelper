@@ -4,8 +4,10 @@
 package uk.ac.horizon.ubihelper;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 import uk.ac.horizon.ubihelper.DnsProtocol.RR;
 
@@ -13,10 +15,17 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ListActivity;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -36,36 +45,12 @@ import android.widget.Toast;
 public class SearchPeersActivity extends ListActivity {
 	private static final String TAG = "ubihelper-search";
 	private View searchView;
-	private DnsClient dnsClient = null;
-	private WifiManager wifi = null;
-	private DnsClient.OnChange onChangeListener = new OnChangeListener();
-	private ArrayAdapter<PeerInfo> peerInfos; 
+	private ArrayAdapter<PeerManager.SearchInfo> peerInfos; 
 	static final int DIALOG_ADD_PEER = 1;
-	private PeerInfo currentPeerInfo = null;
-	
-	private class PeerInfo {
-		private RR rr;
-		private String name;
-		private String ns[];
-		
-		public PeerInfo(RR rr) {
-			this.rr = rr;
-			if (rr.type==DnsProtocol.TYPE_PTR) {
-				try {
-					ns = DnsProtocol.ptrFromData(rr.rdata);
-					if (ns!=null && ns.length>0)
-						name = ns[0];
-				} catch (IOException e) {
-					Log.w(TAG,"Error decoding PTR record: "+e.getMessage());
-					name = "Sorry, could not decode name";
-				}
-			}
-		}
-		
-		public String toString() {
-			return name;
-		}
-	}
+	private PeerManager.SearchInfo currentPeerInfo = null;
+	private PeerManager peerManager = null;
+	private SearchListener searchListener = new SearchListener();
+	boolean hadSavedInstanceState = false;
 	
 	@SuppressWarnings("unused")
 	private void setHeaderText(String text) {
@@ -76,7 +61,7 @@ public class SearchPeersActivity extends ListActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		// TODO from table
-		peerInfos = new ArrayAdapter<PeerInfo>(this, R.layout.peer_item);
+		peerInfos = new ArrayAdapter<PeerManager.SearchInfo>(this, R.layout.peer_item);
 		//aa.add("Hello list 2");
 		ListView lv = getListView();
 		// following line fails with addView not supported in AdapterView
@@ -84,12 +69,12 @@ public class SearchPeersActivity extends ListActivity {
 		setHeaderText("Search");
 		lv.addHeaderView(searchView, "Add a new item", true);
 		lv.setAdapter(peerInfos);
+		hadSavedInstanceState = savedInstanceState!=null;
 		
 		lv.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				if (view==searchView) {
-					if (dnsClient==null)
-						startSearch();
+					startSearch(false);
 				}
 				else {
 					if (position<1 || position>peerInfos.getCount()) 
@@ -103,8 +88,6 @@ public class SearchPeersActivity extends ListActivity {
 				}
 			}			
 		});
-		
-		wifi = (WifiManager)getSystemService(WIFI_SERVICE);
 	}
 
 	@Override
@@ -112,7 +95,7 @@ public class SearchPeersActivity extends ListActivity {
 		Dialog dialog = null;
 		switch (id) {
 		case DIALOG_ADD_PEER: {
-			final PeerInfo peerInfo = currentPeerInfo;
+			final PeerManager.SearchInfo peerInfo = currentPeerInfo;
 			if (peerInfo==null) {
 				Log.e(TAG,"onCreateDialog ADD_PEER with null currentPeerInfo");
 				return dialog;
@@ -141,98 +124,98 @@ public class SearchPeersActivity extends ListActivity {
 	}
 	
 	// Start adding a peer!
-	protected void startAddPeer(PeerInfo peerInfo) {
+	protected void startAddPeer(PeerManager.SearchInfo peerInfo) {
 		// TODO Auto-generated method stub
 		
+	}
+	private Intent getServiceIntent() {		
+		Intent i = new Intent(this.getApplicationContext(), Service.class);
+		return i;
 	}
 	@Override
 	protected void onStart() {
 		super.onStart();
-		startSearch();
-	}
-
-	private synchronized void startSearch() {
-		abortSearch();
-		setHeaderText("Search again");
-		// enabled?
-		if (!wifi.isWifiEnabled()) {
-			wifiError("Please enable wifi in order to search");
-			return;
-		}
-		switch (wifi.getWifiState()) {
-		case WifiManager.WIFI_STATE_ENABLED:
-			// OK
-			break;
-		case WifiManager.WIFI_STATE_ENABLING:
-			wifiError("Please wait for Wifi to finish enabling");
-			return;
-		case WifiManager.WIFI_STATE_DISABLING:
-		case WifiManager.WIFI_STATE_DISABLED:
-			wifiError("Please enable wifi in order to search");
-			return;
-		default:
-			wifiError("Sorry, could not get wifi state - please try again");
-			return;
-		}
-		// has address?
-		WifiInfo info = wifi.getConnectionInfo();
-		int ip = info.getIpAddress();
-		if (ip==0) {
-			wifiError("Sorry, still waiting for an IP address");
-			return;
-		}
-		
-		DnsProtocol.Query query = new DnsProtocol.Query();
-		query.name = DnsUtils.getServiceDiscoveryName();
-		query.rclass = DnsProtocol.CLASS_IN;
-		query.type = DnsProtocol.TYPE_PTR;
-		dnsClient = new DnsClient(query, true);
-		dnsClient.setOnChange(onChangeListener);
-		NetworkInterface ni = DnsUtils.getNetworkInterface(ip);
-		if (ni!=null)
-			dnsClient.setNetworkInterface(ni);
-
-		setHeaderText("Searching...");
 		peerInfos.clear();
-		
-		dnsClient.start();
+		IntentFilter searchFilter = new IntentFilter(PeerManager.ACTION_PEER_DISCOVERED);
+		searchFilter.addAction(PeerManager.ACTION_SEARCH_STARTED);
+		searchFilter.addAction(PeerManager.ACTION_SEARCH_STOPPED);	
+		registerReceiver(searchListener, searchFilter);
+		Intent service = getServiceIntent();
+		// should call startSearch once connected!
+		bindService(service, mServiceConnection, 0);
 	}
-	
-	private class OnChangeListener implements DnsClient.OnChange {
-		public void onAnswer(final RR rr) {
-			runOnUiThread(new Runnable() {
-				public void run() {
-					PeerInfo pi = new PeerInfo(rr);
-					peerInfos.add(pi);
+
+	private class SearchListener extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			// TODO Auto-generated method stub
+			if (PeerManager.ACTION_PEER_DISCOVERED.equals(intent.getAction())) {
+				Bundle extras = intent.getExtras();
+				try {
+					PeerManager.SearchInfo si = new PeerManager.SearchInfo();
+					si.name = extras.getString(PeerManager.EXTRA_NAME);
+					si.src = InetAddress.getByName(extras.getString(PeerManager.EXTRA_SOURCEIP));
+					peerInfos.add(si);
 				}
-			});
+				catch (Exception e) {
+					Log.w(TAG,"Extra making SearchInfo from ACTION_PEER_DISCOVERED: "+e.getMessage());
+				}
+			} else if (PeerManager.ACTION_SEARCH_STOPPED.equals(intent.getAction())) {
+				setHeaderText("Search again");
+			}
 		}
-		public void onComplete(String error) {
-			runOnUiThread(new Runnable() {
-				public void run() {
-					setHeaderText("Search again");
-					abortSearch();
-				}
-			});
-		}		
+		
 	}
 	
-	private void wifiError(String string) {
-		Log.d(TAG,"wifiError: "+string);
-		Toast.makeText(getApplicationContext(), string, Toast.LENGTH_SHORT).show();
+	private synchronized void startSearch(boolean resumeOnly) {
+		setHeaderText("Search again");
+		if (peerManager==null) {
+			setHeaderText("Search again");
+			return;
+		}
+		// previous records
+		LinkedList<PeerManager.SearchInfo> sis = peerManager.getSearchAnswers();
+		for (PeerManager.SearchInfo si : sis) {
+			peerInfos.add(si);
+		}
+		if (peerManager.isSearchActive()) {
+			setHeaderText("Searching...");
+		}
+		else if (!resumeOnly) {
+			setHeaderText("Searching...");
+			peerInfos.clear();
+			peerManager.startSearch();
+		}
 	}
+	
 	@Override
 	protected void onStop() {
 		super.onStop();
-		abortSearch();
-	}
-	private synchronized void abortSearch() {
-		if (dnsClient!=null) {
-			dnsClient.close();
-			dnsClient = null;
-		}		
+		unregisterReceiver(searchListener);
+		unbindService(mServiceConnection);
 	}
 
+	/** monitor binding to service (used for preference update push) */
+	private ServiceConnection mServiceConnection = new ServiceConnection() {
+
+		public void onServiceConnected(ComponentName name, IBinder binder) {
+			Service service = ((Service.LocalBinder)binder).getService();
+			Log.d(TAG,"Service connected");
+			synchronized (SearchPeersActivity.this) {
+				peerManager = service.getPeerManager();
+			}
+			startSearch(hadSavedInstanceState);
+		}
+
+		public void onServiceDisconnected(ComponentName name) {
+			synchronized (SearchPeersActivity.this) {
+				peerManager = null;
+			}
+			Log.d(TAG,"Service disconnected");
+		}		
+	};
 	
+
 	
 }

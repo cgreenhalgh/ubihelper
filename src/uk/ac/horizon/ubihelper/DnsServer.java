@@ -142,13 +142,15 @@ public class DnsServer extends Thread {
 					rpp.response = true;
 					rpp.id = pp.id;
 					LinkedList<DnsProtocol.RR> resprrs = new LinkedList<DnsProtocol.RR>();
-					for (int i=0; i<pp.queries.length; i++) {
-						DnsProtocol.Query q = pp.queries[i];
-						for (DnsProtocol.RR r : rrs) {
-							if (q.name.equals(r.name) && q.type==r.type && q.rclass==r.rclass) {
-								//Log.d(TAG,"Found matching RR: "+r);
-								logger.info("Found matching RR: "+r);
-								resprrs.add(r);
+					synchronized (this) {
+						for (int i=0; i<pp.queries.length; i++) {
+							DnsProtocol.Query q = pp.queries[i];
+							for (DnsProtocol.RR r : rrs) {
+								if (q.name.equals(r.name) && q.type==r.type && q.rclass==r.rclass) {
+									//Log.d(TAG,"Found matching RR: "+r);
+									logger.info("Found matching RR: "+r);
+									resprrs.add(r);
+								}
 							}
 						}
 					}

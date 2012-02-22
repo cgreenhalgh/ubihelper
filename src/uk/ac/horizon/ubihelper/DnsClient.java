@@ -168,8 +168,9 @@ public class DnsClient extends Thread {
 									}
 								}
 								if (!known) {
+									r.src = rdp.getAddress();
 									answers.add(r);
-									logger.info("Found answer "+r);
+									logger.info("Found answer "+r+" from "+rdp.getAddress());
 									if (onChange!=null) {
 										try {
 											onChange.onAnswer(r);

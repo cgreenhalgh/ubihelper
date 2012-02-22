@@ -12,7 +12,8 @@
     </PreferenceCategory>
     
     <PreferenceCategory
-            android:title="@string/http_preferences">
+            android:title="@string/http_preferences" 
+            >
 
 		<EditTextPreference 
 		    android:key="http_port"
@@ -29,16 +30,21 @@
 		</PreferenceCategory>
     
     <PreferenceCategory
-            android:title="@string/wifidisc_preferences">
+            android:title="@string/wifidisc_preferences"
+            android:dependency="run_service"
+            >
 
         <CheckBoxPreference
                 android:key="wifidisc"
                 android:title="@string/wifidisc_preference_title"
-                android:summary="@string/wifidisc_preference_summary" />
+                android:summary="@string/wifidisc_preference_summary" 
+                android:dependency="run_service"
+                />
 
         <EditTextPreference 
 		    android:key="wifidisc_name"
 		    android:title="@string/wifidisc_name_preference_title" 
+            android:dependency="run_service"
 		    />
         
 <!-- 
@@ -56,7 +62,9 @@
  -->
  		<Preference 
  		    android:title="Peer Devices" 
- 		    android:summary="Manage peer devices for information sharing">
+ 		    android:summary="Manage peer devices for information sharing"
+ 		    android:dependency="run_service"
+ 		    >
  			<intent android:action="uk.ac.horizon.ubihelper.MANAGE_PEERS" />
  		</Preference>
  	
