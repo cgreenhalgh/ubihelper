@@ -61,6 +61,57 @@ public class Message {
 				+ ", headerLines=" + headerLines + ", body=" + body + "]";
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((body == null) ? 0 : body.hashCode());
+		result = prime * result
+				+ ((firstLine == null) ? 0 : firstLine.hashCode());
+		result = prime * result
+				+ ((headerLines == null) ? 0 : headerLines.hashCode());
+		result = prime * result + priority;
+		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Message other = (Message) obj;
+		if (body == null) {
+			if (other.body != null)
+				return false;
+		} else if (!body.equals(other.body))
+			return false;
+		if (firstLine == null) {
+			if (other.firstLine != null)
+				return false;
+		} else if (!firstLine.equals(other.firstLine))
+			return false;
+		if (headerLines == null) {
+			if (other.headerLines != null)
+				return false;
+		} else if (!headerLines.equals(other.headerLines))
+			return false;
+		if (priority != other.priority)
+			return false;
+		if (type != other.type)
+			return false;
+		return true;
+	}
+
 	static class PriorityComparator implements Comparator<Message> {
 		public int compare(Message m1, Message m2) {
 			return new Integer(m1.priority).compareTo(m2.priority);

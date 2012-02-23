@@ -1,5 +1,6 @@
 package uk.ac.horizon.ubihelper.net;
 
+import java.util.Arrays;
 import java.util.Comparator;
 
 import uk.ac.horizon.ubihelper.net.Message.Type;
@@ -63,6 +64,18 @@ public class Fragment {
 		this.length = length;
 	};
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "Fragment [messagetype=" + messagetype + ", flags=" + flags
+				+ ", messageid=" + messageid + ", fragmentid=" + fragmentid
+				+ ", length=" + length +/* ", payload="
+				+ Arrays.toString(payload) +*/ ", offset=" + offset
+				+ ", priority=" + priority + "]";
+	}
+
 	static class PriorityComparator implements Comparator<Fragment> {
 		public int compare(Fragment f1, Fragment f2) {
 			return new Integer(f1.priority).compareTo(f2.priority);
