@@ -139,5 +139,45 @@ Ongoing use (with established authenticated connection (or HTTP request sequence
   <li>Get communication state (state, last update)<br>
   </li>
 </ul>
+<p>Wire protocol</p>
+<p>Goals/constraints:</p>
+<ul>
+<li>Message-oriented</li>
+<li>doesn't need to interoperate with existing protocol(s)<li>
+<li>Should include protocol declaration/agreement, including version on connection</li>
+<li>Should be useful for passing JSON-encoded messages. org.json marshalls to/from Strings only. So needs to pass UTF-8 encoded strings as a message primitive. Could be newline separated.</li>
+<li>Should work over non-blocking java.nio.SocketChannel</li>
+<li>Able in principle to transition to encrypted operation</li>
+<li>Asynchronous and bi-directional</li>
+<li>Could be abstracted over transport, i.e. TCP vs HTTP</li>
+<li>Could include application-level reliability mechanism and fail-over to new connection</li>
+<li>Probably useful to include some link-layer abstraction(s), e.g. fragmentation, to allow interleaving</li>
+</ul>
+<p>Approach:</p>
+<ul>
+<li>Think of current connection state as analogous to additional HTTP headers, e.g. correlation token, content type</li>
+<li>Look at java.nio.charset.CharsetEncoder/CharsetDecoder for encode/decode between java.nio.CharBuffer (in particular String or StringBuilder, respectively) and (multiple) java.nio.ByteBuffer (over slice of byte array)</li>
+</ul>
+<p>"Link-layer" format (byte-encoded basic layer):</p>
+<ul>
+<li>flags(1 byte):</li>
+<ul>
+<li>bit 1 (high bit) - more fragments to follow</li>
+<li>bit 2 - encrypted</li>
+</ul>
+<li>payloadtype(1 byte, unsigned):</li>
+<ul>
+<li>0 - undefined - in continuation fragment see payloadtype in first fragment</li>
+<li>1 - hello: "Content-type: application/x-ubihelper;version=N" (should not be fragmented); current version = 1</li>
+<li>2 - management: JSON-encoded connection management message</li>
+<li>3 - pseudo-http request: request line, optional header lines, blank line, followed by JSON string</li>
+<li>4 - pseudo-http response: response line, optional header lines, blank line, followed by JSON string</li>
+</ul>
+<li>messageid(2 bytes, big-endian, unsigned, incrementing from random or 0, loops)</li>
+<li>fragmentid(2 bytes, big-endian, incrementing from 1 (0 if unfragmented), unsigned, bounded 2^16-1)</li>
+<li>fragmentlength(2 bytes, big endian, unsigned, bounded 2^16-1)</li>
+</ul>
+<p>Followed by fragmentlength bytes of payload</p>
+<p>When sending text this should be UTF-8 encoded; NL (only) is the line separator (where applicable).</p>
 <br>
 </body></html>
