@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Logger;
 
 //import android.util.Log;
 
@@ -26,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  */
 public class PeerConnection {
+	static final Logger logger = Logger.getLogger(PeerConnection.class.getName());
 	
 	private static final String TAG = "ubihelper-peerconn";
 	static final int HEADER_SIZE = 8;
@@ -39,9 +41,9 @@ public class PeerConnection {
 	private static final int HEADER_LENGTH_HI = 6;
 	private static final int HEADER_LENGTH_LO = 7;
 	/** send messages - not yet fragmented (can be withdrawn or checked) */
-	private PriorityQueue<Message> sendMessageQueue = new PriorityQueue<Message>(0, new Message.PriorityComparator());
+	private PriorityQueue<Message> sendMessageQueue = new PriorityQueue<Message>(10, new Message.PriorityComparator());
 	/** send fragments */
-	private PriorityQueue<Fragment> sendFragmentQueue = new PriorityQueue<Fragment>(0, new Fragment.PriorityComparator());
+	private PriorityQueue<Fragment> sendFragmentQueue = new PriorityQueue<Fragment>(10, new Fragment.PriorityComparator());
 	/** current fragment in send - removed from sendFragmentQueue atomically */
 	private Fragment currentSendFragment;
 	/** sent header? */
@@ -85,23 +87,43 @@ public class PeerConnection {
 	private boolean failedSend;
 	/** current socket failed on recv */
 	private boolean failedRecv;
+	/** current socket failed on connect */
+	private boolean failedConnect;
 	/** wants to send (would block) */
 	private int waitingOps;
 	/** next send message id */
 	private int nextMessageid;
+	/** client object */
+	private Object mAttachment[] = new Object[1];
+	/** callback */
+	private OnPeerConnectionListener callback = null;
 	
 	/** cons */
 	public PeerConnection(Selector selector, ReentrantLock selectorLock) {
 		this.selector = selector;
 		this.selectorLock = selectorLock;
 	}
+	public void attach(Object attachment) {
+		// didn't really want to lock whole Object
+		synchronized (mAttachment) {
+			mAttachment[0] = attachment;
+		}
+	}
+	public Object attachment() {
+		synchronized (mAttachment) {
+			return mAttachment[0];
+		}
+	}
+	public synchronized void setOnPeerConnectionListener(OnPeerConnectionListener listener) {
+		callback = listener;
+	}
 	
 	/** set (new) socket channel - start handshake, etc. */
-	public synchronized void changeSocketChannel(SocketChannel socketChannel) {
+	public synchronized void changeSocketChannel(SocketChannel socketChannel2) {
 		// tidy up
 		try {
-			if (socketChannel!=null)
-				socketChannel.close();
+			if (this.socketChannel!=null)
+				this.socketChannel.close();
 			// cancels selector anyway
 			selectionKey = null;
 		}
@@ -117,26 +139,85 @@ public class PeerConnection {
 		currentSendFragment = null;
 		sendBuffer = null;
 		// ready...
-		this.socketChannel = socketChannel;
+		this.socketChannel = socketChannel2;
 		failedSend = false;
 		failedRecv = false;
-		waitingOps = 0;
-		reregister();
-		checkSend();
-		checkRecv();
+		failedConnect = false;
+		selectorLock.lock();
+		try {
+			if (!this.socketChannel.isConnected())
+				waitingOps = SelectionKey.OP_CONNECT;
+			else 
+				waitingOps = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+			reregisterInitial();
+		}
+		finally {
+			selectorLock.unlock();
+		}
 	}
-	
+	public void checkConnect() {
+		if (failedConnect)
+			return;
+		try {
+			boolean done = socketChannel.finishConnect();
+			if (done) {
+				selectorLock.lock();
+				try {
+					waitingOps = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+					reregister();
+				}
+				finally {
+					selectorLock.unlock();
+				}
+			}
+		} catch (IOException e) {
+			log_w(TAG,"finishConnect failed: "+e.getMessage());
+			failedConnect = true;
+			callOnFail();
+		}
+	}
 	/** send message (queue, anyway) */
-	public synchronized void sendMessage(Message m) {
-		sendMessageQueue.add(m);
-		checkSend();
+	public void sendMessage(Message m) {
+		synchronized (sendMessageQueue) {
+			sendMessageQueue.add(m);
+		}
+		registerSet(SelectionKey.OP_WRITE);
+		// no, really!
+		selector.wakeup();
 	}
+	private void registerSet(int op) {
+		selectorLock.lock();
+		try {
+			if ((waitingOps & op)==0) {
+				waitingOps |= op;
+				reregister();
+			}
+		} finally {	
+			selectorLock.unlock();
+		}
+	}		
+	private void registerClear(int op) {
+		selectorLock.lock();
+		try {
+			if ((waitingOps & op)!=0) {
+				waitingOps &= ~op;
+				reregister();
+			}
+		} finally {	
+			selectorLock.unlock();
+		}
+	}		
+
 	/** non-blocking - return null if not available */
-	public synchronized Message getMessage() {
-		Message m = recvMessageQueue.poll();
-		return m;
+	public Message getMessage() {
+		synchronized (recvMessageQueue) {
+			Message m = recvMessageQueue.poll();
+			return m;
+		}
 	}
-	private synchronized void checkSend() {
+	/** call from scheduler thread */
+	synchronized void checkSend() {
+		logger.info("checkSend()");
 		boolean blocking = false;
 		boolean failed = failedSend;
 		while (!blocking && !failed) {
@@ -169,11 +250,17 @@ public class PeerConnection {
 			else {
 				// line up a new fragment...
 				// highest priority message?
-				Message nm = sendMessageQueue.peek();
+				Message nm = null;
+				synchronized (sendMessageQueue) {
+					nm = sendMessageQueue.peek();
+				}
 				Fragment nf = sendFragmentQueue.peek();
 				if (nm!=null && (nf==null || nm.priority>nf.priority)) {
 					// fragment new message
-					nm = sendMessageQueue.remove();
+					synchronized (sendMessageQueue) {
+						// not really a race because only we take stuff from it
+						nm = sendMessageQueue.remove();
+					}
 					Queue<Fragment> nfs;
 					try {
 						nfs = Marshaller.fragment(nm, nextMessageid++);
@@ -188,9 +275,10 @@ public class PeerConnection {
 					// make current
 					nf = sendFragmentQueue.remove();
 					currentSendFragment = nf;
+					logger.info("Sending fragment "+nf);
 					byte currentSendHeader[] = null;
 					if (currentSendFragment.offset==HEADER_SIZE) {
-						currentSendHeader = currentRecvFragment.payload;
+						currentSendHeader = currentSendFragment.payload;
 						sendHeaderDone = true;
 						sendBuffer = ByteBuffer.wrap(currentSendFragment.payload, 0, HEADER_SIZE+currentSendFragment.length);
 					} else {
@@ -213,28 +301,54 @@ public class PeerConnection {
 					break;
 			}
 		}
-		if (failed) 
+		if (failed) {
 			failedSend = true;
-		
+			callOnFail();
+		}		
 		if (blocking && !failed) {
-			if ((waitingOps & SelectionKey.OP_WRITE)==0) {
-				waitingOps |= SelectionKey.OP_WRITE;
-				reregister();
-			}
+			registerSet(SelectionKey.OP_WRITE);
 		}
 		else {
-			if ((waitingOps & SelectionKey.OP_WRITE)!=0) {
-				waitingOps &= ~SelectionKey.OP_WRITE;
-				reregister();
-			}
+			registerClear(SelectionKey.OP_WRITE);
 		}
 	}
-	private synchronized void checkRecv() {
+	private synchronized void callOnFail() {
+		try {
+			if (socketChannel!=null) {
+				try {
+					logger.info("Closing socketChannel on fail");
+					socketChannel.close();					
+				}
+				catch (Exception e) {
+					/* ignore */
+				}
+				socketChannel = null;
+			}
+			if (callback!=null)
+				callback.onFail(this, failedSend, failedRecv, failedConnect);
+		}
+		catch (Exception e) {
+			log_w(TAG,"Error on onFail callback: "+e.getMessage());
+		}
+	}
+	private synchronized void callOnMessage() {
+		try {
+			if (callback!=null)
+				callback.onRecvMessage(this);
+		}
+		catch (Exception e) {
+			log_w(TAG,"Error on onRecvMessage callback: "+e.getMessage());
+		}
+	}
+	/** call from scheduler thread */
+	synchronized void checkRecv() {
+		logger.info("checkRecv()");
 		boolean blocking = false;
 		boolean failed = failedRecv;
 		while (!blocking && !failed) {
 			if (currentRecvFragment==null) {
 				currentRecvFragment = new Fragment();
+				currentRecvFragment.payload = new byte[HEADER_SIZE];
 				currentRecvFragment.offset = HEADER_SIZE;
 				recvBuffer = ByteBuffer.wrap(currentRecvFragment.payload, 0, HEADER_SIZE);
 				recvHeaderDone = false;
@@ -255,7 +369,7 @@ public class PeerConnection {
 					if (!recvHeaderDone) {
 						recvHeaderDone = true;
 						currentRecvFragment.flags = currentRecvFragment.payload[HEADER_FLAGS];
-						byte type = currentRecvFragment.payload[HEADER_FLAGS];
+						byte type = currentRecvFragment.payload[HEADER_PAYLOADTYPE];
 						if (type==Message.Type.HELLO.getCode())
 							currentRecvFragment.messagetype = Message.Type.HELLO;
 						else if (type==Message.Type.MANAGEMENT.getCode())
@@ -288,6 +402,7 @@ public class PeerConnection {
 						recvBuffer = ByteBuffer.wrap(currentRecvFragment.payload, currentRecvFragment.offset, currentRecvFragment.payload.length-currentRecvFragment.offset);
 					} else {
 						// done body
+						logger.info("Received fragment "+currentRecvFragment);
 						// done message?
 						Queue<Fragment> fs = null;
 						// unfragmented?
@@ -331,7 +446,10 @@ public class PeerConnection {
 							// message...
 							try {
 								Message m = Marshaller.assemble(fs);
-								recvMessageQueue.add(m);
+								synchronized (recvMessageQueue) {
+									recvMessageQueue.add(m);
+								}
+								callOnMessage();
 							}
 							catch (IOException e) {
 								log_w(TAG,"Error assembling single-fragment message: "+e.getMessage());
@@ -340,31 +458,41 @@ public class PeerConnection {
 				}
 			}
 		}
-		if (failed) 
+		if (failed) {
 			failedRecv= true;
+			callOnFail();
+		}
 		
 		if (blocking && !failed) {
-			if ((waitingOps & SelectionKey.OP_READ)==0) {
-				waitingOps |= SelectionKey.OP_READ;
-				reregister();
-			}
+			registerSet(SelectionKey.OP_READ);
 		}
 		else {
-			if ((waitingOps & SelectionKey.OP_READ)!=0) {
-				waitingOps &= ~SelectionKey.OP_READ;
-				reregister();
-			}
+			registerClear(SelectionKey.OP_READ);
 		}
 	}
-	private void reregister() {
+	synchronized int getWaitingOps() {
+		return waitingOps;
+	}
+	private synchronized void reregister() {
+		//selector.wakeup();
+	}
+	private synchronized void reregisterInitial() {
+		if (socketChannel==null || !socketChannel.isOpen())
+			return;
 		selectorLock.lock();
 		selector.wakeup();
 		try {
+			logger.info("About to register for "+waitingOps+", selector open="+selector.isOpen()+", socket open="+socketChannel.isOpen());
 			selectionKey = socketChannel.register(selector, waitingOps, this);
 		} catch (ClosedChannelException e) {
 			if ((waitingOps & SelectionKey.OP_WRITE)!=0)
 				failedSend = true;
-			log_w(TAG,"register failed: "+e.getMessage());
+			if ((waitingOps & SelectionKey.OP_READ)!=0)
+				failedRecv = true;
+			if ((waitingOps & SelectionKey.OP_CONNECT)!=0)
+				failedConnect = true;
+			log_w(TAG,"register failed (ops="+waitingOps+"): "+e);
+			e.printStackTrace();
 		} 
 		finally {
 			selectorLock.unlock();

@@ -21,6 +21,8 @@ public class Message {
 		Type(int code) { this.code = (byte)code; }
 		public byte getCode() { return code; }
 	}
+	public static final String HELLO_BODY_PREFIX = "application/x-ubihelper;version=";
+	public static final int VERSION = 1;
 	
 	/** type - for all messages */
 	public Type type;
@@ -116,5 +118,9 @@ public class Message {
 		public int compare(Message m1, Message m2) {
 			return new Integer(m1.priority).compareTo(m2.priority);
 		}		
+	}
+
+	public static String getHelloBody() {
+		return HELLO_BODY_PREFIX+VERSION;
 	}
 }
