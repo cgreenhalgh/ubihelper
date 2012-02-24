@@ -72,7 +72,7 @@ public class PeerInfoActivity extends Activity {
 		if (peerManager!=null && getIntent()!=null) {
 			//Log.d(TAG,"getPeer...");
 			// this call blocks when called from ServiceConnection, presumably because of the lock on getPeer
-			PeerManager.PeerInfo peerInfo = peerManager.getPeer(getIntent());
+			peerInfo = peerManager.getPeer(getIntent());
 			//Log.d(TAG,"getPeer done");
 			if (peerInfo!=null) {
 				peerInfoName.setText(peerInfo.instanceName);

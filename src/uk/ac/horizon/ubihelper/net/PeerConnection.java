@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -117,7 +118,18 @@ public class PeerConnection {
 	public synchronized void setOnPeerConnectionListener(OnPeerConnectionListener listener) {
 		callback = listener;
 	}
-	
+	public synchronized void close() {
+		try {
+			if (this.socketChannel!=null)
+				this.socketChannel.close();
+			socketChannel = null;
+			// cancels selector anyway
+			selectionKey = null;
+		}
+		catch (Exception e) {
+			/* ignore */
+		}
+	}
 	/** set (new) socket channel - start handshake, etc. */
 	public synchronized void changeSocketChannel(SocketChannel socketChannel2) {
 		// tidy up
@@ -155,12 +167,19 @@ public class PeerConnection {
 			selectorLock.unlock();
 		}
 	}
-	public void checkConnect() {
+	public synchronized boolean isConnected() {
+		if (socketChannel!=null)
+			return socketChannel.isOpen() && socketChannel.isConnected();
+		return false;
+	}
+	
+	void checkConnect() {
 		if (failedConnect)
 			return;
 		try {
 			boolean done = socketChannel.finishConnect();
 			if (done) {
+				callOnConnected();
 				selectorLock.lock();
 				try {
 					waitingOps = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
@@ -340,6 +359,15 @@ public class PeerConnection {
 			log_w(TAG,"Error on onRecvMessage callback: "+e.getMessage());
 		}
 	}
+	private synchronized void callOnConnected() {
+		try {
+			if (callback!=null)
+				callback.onConnected(this);
+		}
+		catch (Exception e) {
+			log_w(TAG,"Error on onConnected callback: "+e.getMessage());
+		}
+	}
 	/** call from scheduler thread */
 	synchronized void checkRecv() {
 		logger.info("checkRecv()");
@@ -510,5 +538,8 @@ public class PeerConnection {
 	}
 	static void log(String level, String tag, String msg) {
 		System.out.println(tag+" - "+level+": "+msg);
+	}
+	public synchronized SocketChannel getSocketChannel() {
+		return socketChannel;
 	}
 }

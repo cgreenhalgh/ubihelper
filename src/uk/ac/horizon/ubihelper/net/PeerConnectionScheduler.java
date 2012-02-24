@@ -39,6 +39,7 @@ public class PeerConnectionScheduler extends Thread {
 	 * @throws IOException */
 	public PeerConnectionScheduler(ServerSocketChannel ssc) throws IOException {
 		serverSocketChannel = ssc;
+		serverSocketChannel.configureBlocking(false);
 		selector = Selector.open();
 		if (serverSocketChannel!=null)
 			serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, serverSocketChannel);
@@ -56,13 +57,14 @@ public class PeerConnectionScheduler extends Thread {
 	public synchronized void setListener(Listener l) {
 		listener = l;
 	}
-	public PeerConnection connect(InetSocketAddress address, OnPeerConnectionListener pcl) throws IOException {
+	public PeerConnection connect(InetSocketAddress address, OnPeerConnectionListener pcl, Object attachment) throws IOException {
 		logger.info("Connect to "+address);
 		SocketChannel socketChannel = SocketChannel.open();
 		socketChannel.configureBlocking(false);
 		socketChannel.connect(address);
 		PeerConnection pc = new PeerConnection(selector, selectorLock);
 		pc.setOnPeerConnectionListener(pcl);
+		pc.attach(attachment);
 		pc.changeSocketChannel(socketChannel);
 		return pc;
 	}
@@ -168,6 +170,11 @@ public class PeerConnectionScheduler extends Thread {
 					// TODO Auto-generated method stub
 					logger.info("onFail: "+pc);
 				}
+
+				public void onConnected(PeerConnection pc) {
+					// TODO Auto-generated method stub
+					logger.info("onConnected: "+pc);
+				}
 			};
 			pcs.setListener(new Listener() {
 
@@ -188,7 +195,7 @@ public class PeerConnectionScheduler extends Thread {
 				try {
 					int port = Integer.parseInt(args[i]);
 					logger.info("Try connect to "+port);
-					pc = pcs.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port), pcl);
+					pc = pcs.connect(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port), pcl, null);
 				}
 				catch (NumberFormatException e) {
 					logger.warning("Arg "+i+" not a port number ("+args[i]+")");

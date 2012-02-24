@@ -23,6 +23,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import uk.ac.horizon.ubihelper.DnsProtocol.RR;
 import uk.ac.horizon.ubihelper.PeerManager.SearchInfo;
+import uk.ac.horizon.ubihelper.net.OnPeerConnectionListener;
+import uk.ac.horizon.ubihelper.net.PeerConnection;
+import uk.ac.horizon.ubihelper.net.PeerConnectionScheduler;
 import android.content.Intent;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -45,8 +48,7 @@ public class PeerManager {
 	private boolean searchStarted = false;
 	private ServerSocketChannel serverSocketChannel;
 	private int serverPort;
-	private Selector selector;
-	private Thread selectorThread;
+	private PeerConnectionScheduler selector;
 	
 	public static class SearchInfo {
 		public String name;
@@ -84,13 +86,11 @@ public class PeerManager {
 			Log.w(TAG,"Error opening ServerSocketChannel: "+e.getMessage());
 		}
 		try {
-			selector = Selector.open();
-			if (serverSocketChannel!=null)
-				serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, serverSocketChannel);
-			selectorThread = new SelectorThread();
-			selectorThread.start();
+			selector = new PeerConnectionScheduler(serverSocketChannel);
+			selector.setListener(selectorListener);
+			selector.start();
 		} catch (IOException e) {
-			Log.w(TAG,"Error opening Selector: "+e.getMessage());
+			Log.w(TAG,"Error starting Selector: "+e.getMessage());
 		}
 	}
 	public synchronized int getServerPort() {
@@ -109,11 +109,8 @@ public class PeerManager {
 			}
 			serverSocketChannel = null;
 		}
-		try {
-			if (selector!=null)
-				selector.close();
-		} catch (IOException e) {
-		}
+		if (selector!=null)
+			selector.close();
 	}
 	private synchronized void closeSearchInternal() {		
 		if (searchClient!=null) {
@@ -253,8 +250,7 @@ public class PeerManager {
 		// SRV
 		public int port = 0;
 		// connect
-		SocketChannel socketChannel;
-		SelectionKey key;
+		PeerConnection pc;
 		
 		// debug
 		public String detail;
@@ -353,6 +349,42 @@ public class PeerManager {
 			sendPeerRequest(pi);
 		}
 	}
+	private OnPeerConnectionListener peerConnectionListener = new OnPeerConnectionListener() {
+		public void onRecvMessage(PeerConnection pc) {
+		}
+		
+		public void onFail(PeerConnection pc, boolean sendFailed,
+				boolean recvFailed, boolean connectFailed) {
+			if (pc.attachment() instanceof PeerInfo) {
+				PeerInfo pi = (PeerInfo)pc.attachment();
+				Log.d(TAG, "onFail PeerInfo "+pi);
+				pi.state = PeerState.STATE_CONNECTING_FAILED;
+				pi.detail = null;
+				updatePeer(pi);
+			}
+			else if (pc.attachment() instanceof ClientInfo) {
+				ClientInfo ci = (ClientInfo)pc.attachment();
+				Log.d(TAG,"onFail ClientInfo "+ci);
+				// TODO
+			}
+		}
+
+		public void onConnected(PeerConnection pc) {
+			if (pc.attachment() instanceof PeerInfo) {
+				PeerInfo pi = (PeerInfo)pc.attachment();
+				if (pi.state==PeerState.STATE_CONNECTING) {
+					Log.d(TAG, "onConnected -> connected PeerInfo "+pi);
+					pi.state = PeerState.STATE_CONNECTED;
+					pi.detail = null;
+					broadcastPeerState(pi);
+					updatePeer(pi);
+				}
+				else
+					Log.d(TAG,"onConnected "+pi.state+" PeerInfo "+pi);
+			}
+		}
+	};
+	
 	private synchronized void connectPeer(PeerInfo pi) {
 		if (pi.src==null) {
 			pi.state = PeerState.STATE_CONNECTING_FAILED;
@@ -363,16 +395,11 @@ public class PeerManager {
 		pi.state = PeerState.STATE_CONNECTING;
 		pi.detail = "connectPeer()";
 		try {
-			//pi.detail = "1";
-			pi.socketChannel = SocketChannel.open();
-			//pi.detail = "2";
-			pi.socketChannel.configureBlocking(false);
-			//pi.detail = "3";
-			//Toast.makeText(service, "Connect...", Toast.LENGTH_SHORT).show();
 			Log.d(TAG,"Connect to "+pi.src.getHostAddress()+":"+pi.port);
-			boolean done = pi.socketChannel.connect(new InetSocketAddress(pi.src, pi.port));
+			pi.pc = selector.connect(new InetSocketAddress(pi.src, pi.port), peerConnectionListener, pi);
 			//Log.d(TAG,"Connect done="+done);
 			//pi.detail = "4 (done="+done+")";
+			boolean done = pi.pc.isConnected();
 			if (done) {
 				//Toast.makeText(service, "Connected!", Toast.LENGTH_SHORT).show();
 				pi.state = PeerState.STATE_CONNECTED;
@@ -382,7 +409,6 @@ public class PeerManager {
 				//Toast.makeText(service, "waiting...", Toast.LENGTH_SHORT).show();
 				pi.detail = "Waiting for connect";
 				//Log.d(TAG,"Register (connect)...");
-				pi.key = register(pi.socketChannel, SelectionKey.OP_CONNECT, pi);
 				//Log.d(TAG,"registered");
 			}
 			//Log.d(TAG,"Broadcast...");
@@ -489,13 +515,9 @@ public class PeerManager {
 			Intent i = new Intent(ACTION_PEERS_CHANGED);
 			service.sendBroadcast(i);
 		}
-		if (pi.socketChannel!=null) {
-			try {
-				pi.socketChannel.close();
-			}
-			catch (IOException e) {
-			}
-			pi.socketChannel = null;
+		if (pi.pc!=null) {
+			pi.pc.close();
+			pi.pc = null;
 		}
 	}
 	private void sendPeerRequest(PeerInfo pi) {
@@ -510,108 +532,27 @@ public class PeerManager {
 
 	private static class ClientInfo {
 		// connect
-		SocketChannel socketChannel;
-		SelectionKey key;
-		public ClientInfo(SocketChannel socketChannel) {
-			this.socketChannel = socketChannel;
+		PeerConnection pc;
+		
+		public ClientInfo(PeerConnection pc) {
+			this.pc = pc;
 		}
 	}
 	
 	/** clients */
 	private ArrayList<ClientInfo> clients = new ArrayList<ClientInfo>();
-	/** work around deadlock in doing register in another thread to select */
-	private SelectionKey register(SocketChannel socketChannel, int ops, Object attachment) throws ClosedChannelException {
-		selectorLock.lock();
-		selector.wakeup();
-		try {
-			return socketChannel.register(selector, ops, attachment);
-		} 
-		finally {
-			selectorLock.unlock();
+
+	private PeerConnectionScheduler.Listener selectorListener = new PeerConnectionScheduler.Listener() {
+		
+		public void onAccept(PeerConnectionScheduler pcs,
+				PeerConnection newPeerConnection) {
+			Log.d(TAG,"onAccept new peer");
+			// TODO Auto-generated method stub
+			ClientInfo ci = new ClientInfo(newPeerConnection);
+			newPeerConnection.setOnPeerConnectionListener(peerConnectionListener);
+			clients.add(ci);
+			Log.d(TAG,"Accepted new connection from "+newPeerConnection.getSocketChannel().socket().getInetAddress().getHostAddress()+":"+newPeerConnection.getSocketChannel().socket().getPort());			
 		}
-	}
-	
-	final ReentrantLock selectorLock = new ReentrantLock();
-	
-	private class SelectorThread extends Thread {
-		public void run() {
-			while (!closed) {
-				try {
-					// nasty register problem - see http://stackoverflow.com/questions/1057224/thread-is-stuck-while-registering-channel-with-selector-in-java-nio-server
-					// ensure other gets chance to complete
-					selectorLock.lock();
-					selectorLock.unlock();
-					//Log.d(TAG,"Select...");
-					int i = selector.select();
-					//Log.d(TAG,"select done with "+i+" ready");
-					if (i==0)
-						continue;
-				} catch (IOException e) {
-					Log.w(TAG,"doing select(): "+e.getMessage());
-				}
-				Set<SelectionKey> keys = null;
-				try {
-					keys = selector.selectedKeys();
-				}
-				catch (ClosedSelectorException e) {
-					Log.d(TAG,"Selector closed - exiting");
-					break;
-				}
-				for (SelectionKey key : keys) {
-					Object obj = key.attachment();
-					if (obj instanceof PeerInfo) {
-						synchronized (PeerManager.this) {
-							PeerInfo pi = (PeerInfo)obj;
-							if (pi.socketChannel!=null && pi.socketChannel.isConnectionPending()) {
-								try {
-									//Toast.makeText(service, "Finish connect...", Toast.LENGTH_SHORT).show();
-									// Change at some point...
-									Log.d(TAG,"finishConnect to "+pi.src.getHostAddress()+":"+pi.port);
-									boolean done = pi.socketChannel.finishConnect();
-									//Log.d(TAG,"finishConnect done="+done);
-									if (done) {
-										pi.state = PeerState.STATE_CONNECTED;
-										pi.detail = null;
-										pi.key = pi.socketChannel.register(selector, SelectionKey.OP_READ, pi);
-									}
-									else
-										pi.detail = "finishConnect returned false";
-									broadcastPeerState(pi);
-									if (done) {
-										updatePeer(pi);
-									}
-								} catch (IOException e) {
-									Log.w(TAG,"Error finishing connect: "+e.getMessage());
-									pi.state = PeerState.STATE_CONNECTING_FAILED;
-									pi.detail = null;
-									updatePeer(pi);
-								}
-							}
-						}
-					} else if (serverSocketChannel!=null && obj==serverSocketChannel) {
-						try {
-							SocketChannel socketChannel = serverSocketChannel.accept();
-							if (socketChannel==null) {
-								Log.d(TAG,"Event on serverSocketChannel but accept returned null");
-								continue;
-							}							
-							socketChannel.configureBlocking(false);
-							//Toast.makeText(service, "Accepted connect", Toast.LENGTH_SHORT).show();
-							ClientInfo ci = new ClientInfo(socketChannel);
-							ci.key = ci.socketChannel.register(selector, SelectionKey.OP_READ, ci);
-							clients.add(ci);
-							Log.d(TAG,"Accepted new connection from "+socketChannel.socket().getInetAddress().getHostAddress()+":"+socketChannel.socket().getPort());
-						} catch (IOException e) {
-							Log.w(TAG,"Error accepted new connection: "+e.getMessage());
-						}						
-					}
-					else if (obj instanceof ClientInfo) {
-						ClientInfo ci = (ClientInfo)obj;
-						// ...
-					}
-				}
-			}
-		}
-	}
+	};
 
 }
