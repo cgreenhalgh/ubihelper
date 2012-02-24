@@ -56,6 +56,7 @@
         <activity android:name=".ManagePeersActivity" android:enabled="true"></activity>
         <activity android:name=".SearchPeersActivity" android:enabled="true"></activity>
         <activity android:enabled="true" android:name=".PeerInfoActivity"></activity>
+        <activity android:name=".PeerRequestActivity" android:enabled="true"></activity>
     </application>
 
 </manifest>

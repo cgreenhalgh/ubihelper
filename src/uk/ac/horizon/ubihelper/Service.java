@@ -18,6 +18,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -274,5 +276,16 @@ public class Service extends android.app.Service {
 			throw HttpError.badRequest("Requst not well-formed JSON");
 		}
 		return response.toString();
+	}
+	public String getDeviceId() {
+		WifiManager wifi = (WifiManager)getSystemService(WIFI_SERVICE);
+		if (wifi!=null) {
+			WifiInfo wi = wifi.getConnectionInfo();
+			if (wi!=null) {
+				return wi.getMacAddress();
+			}
+		}
+		Log.w(TAG,"Could not get device ID");
+		return "UNKNOWNID";
 	}	
 }

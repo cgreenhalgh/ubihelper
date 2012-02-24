@@ -1,5 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head><body>
+<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head>
+<body>
 <h1>UbiHelper Peer Network</h1>
 <p>
 
@@ -102,7 +103,10 @@ our case) and port&nbsp;</li>
 port), including first phase of DH key exchange or new passcode
 encrypted secure token (may include identification information for peer record)<br>
     </li>
-    <li>Notification of user with option to accept or reject request, typically requiring independent entry of passcode from initiating device (typically include identification information for peer record)<br>
+    <li>Notification
+of user with option to accept or reject request, typically requiring
+independent entry of passcode from initiating device (typically include
+identification information for peer record)<br>
     </li>
     <li>Response to initiator and update of initiator peer record</li>
   </ul>
@@ -143,9 +147,11 @@ Ongoing use (with established authenticated connection (or HTTP request sequence
 <p>Goals/constraints:</p>
 <ul>
 <li>Message-oriented</li>
-<li>doesn't need to interoperate with existing protocol(s)<li>
-<li>Should include protocol declaration/agreement, including version on connection</li>
-<li>Should be useful for passing JSON-encoded messages. org.json marshalls to/from Strings only. So needs to pass UTF-8 encoded strings as a message primitive. Could be newline separated.</li>
+<li>doesn't need to interoperate with existing protocol(s)</li><li>
+</li><li>Should include protocol declaration/agreement, including version on connection</li>
+<li>Should be useful for passing JSON-encoded messages. org.json
+marshalls to/from Strings only. So needs to pass UTF-8 encoded strings
+as a message primitive. Could be newline separated.</li>
 <li>Should work over non-blocking java.nio.SocketChannel</li>
 <li>Able in principle to transition to encrypted operation</li>
 <li>Asynchronous and bi-directional</li>
@@ -156,7 +162,10 @@ Ongoing use (with established authenticated connection (or HTTP request sequence
 <p>Approach:</p>
 <ul>
 <li>Think of current connection state as analogous to additional HTTP headers, e.g. correlation token, content type</li>
-<li>Look at java.nio.charset.CharsetEncoder/CharsetDecoder for encode/decode between java.nio.CharBuffer (in particular String or StringBuilder, respectively) and (multiple) java.nio.ByteBuffer (over slice of byte array)</li>
+<li>Look at java.nio.charset.CharsetEncoder/CharsetDecoder for
+encode/decode between java.nio.CharBuffer (in particular String or
+StringBuilder, respectively) and (multiple) java.nio.ByteBuffer (over
+slice of byte array)</li>
 </ul>
 <p>"Link-layer" format (byte-encoded basic layer):</p>
 <ul>
@@ -179,5 +188,5 @@ Ongoing use (with established authenticated connection (or HTTP request sequence
 </ul>
 <p>Followed by fragmentlength bytes of payload</p>
 <p>When sending text this should be UTF-8 encoded; NL (only) is the line separator (where applicable).</p>
-<br>
+New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/version</li><li>responder receives and checks HELLO</li><li>responder sends own HELLO message with protocol/version</li><li>initiator receives and checks HELLO</li></ul>New peer request (after new connection exchange):<br><ul><li>initiator sends MANAGEMENT message (JSON object) with properties:</li><ul><li>type = "init_peer_req"</li><li>id = DEVICE-ID (unique)</li><li>pindigest = MD5 digest of initiator nonce and UTF-8 encoded pin</li><li>port = initiator service port</li><li>name = device (discovery) name</li></ul><li>responder&nbsp;</li><ul><li>with PIN UI, requests PIN from user, and sends MANAGEMENT message with properties:</li><ul><li>type = "resp_peer_pin"</li><li>id = DEVICE-ID</li><li>port = service port (initiator should have used it anyway)</li><li>name = device (discovery) name (initiator usually has it anyway)</li><li>pin = input pin text</li></ul></ul></ul>
 </body></html>
