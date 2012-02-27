@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 //import android.util.Log;
@@ -347,7 +348,8 @@ public class PeerConnection {
 				callback.onFail(this, failedSend, failedRecv, failedConnect);
 		}
 		catch (Exception e) {
-			log_w(TAG,"Error on onFail callback: "+e.getMessage());
+			//log_w(TAG,"Error on onFail callback: "+e.getMessage());
+			logger.log(Level.WARNING, "Error in onFail callback", e);
 		}
 	}
 	private synchronized void callOnMessage() {
@@ -356,7 +358,8 @@ public class PeerConnection {
 				callback.onRecvMessage(this);
 		}
 		catch (Exception e) {
-			log_w(TAG,"Error on onRecvMessage callback: "+e.getMessage());
+			//log_w(TAG,"Error on onRecvMessage callback: "+e.getMessage());
+			logger.log(Level.WARNING, "Error in onRecvMessage callback", e);
 		}
 	}
 	private synchronized void callOnConnected() {
@@ -365,7 +368,8 @@ public class PeerConnection {
 				callback.onConnected(this);
 		}
 		catch (Exception e) {
-			log_w(TAG,"Error on onConnected callback: "+e.getMessage());
+			//log_w(TAG,"Error on onConnected callback: "+e.getMessage());
+			logger.log(Level.WARNING, "Error in onConnected callback", e);
 		}
 	}
 	/** call from scheduler thread */

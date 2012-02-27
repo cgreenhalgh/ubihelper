@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 /**
@@ -46,6 +47,10 @@ public class Service extends android.app.Service {
 	private Handler mHandler;
 	private LinkedList<NamedChannel> channels = new LinkedList<NamedChannel>();
 	private PeerManager peerManager;
+	private BluetoothAdapter bluetooth;
+	private String btmac;
+	private TelephonyManager telephony;
+	private String imei;
 	
 	@Override
 	public void onCreate() {
@@ -98,6 +103,14 @@ public class Service extends android.app.Service {
 		wifiDiscoveryManager.setServerPort(serverPort);
 		wifiDiscoveryManager.setEnabled(wifiDiscoverable);
 		
+		bluetooth = BluetoothAdapter.getDefaultAdapter();
+		if (bluetooth!=null)
+			btmac = bluetooth.getAddress();
+		
+		telephony = (TelephonyManager)getSystemService(TELEPHONY_SERVICE);
+		if (telephony!=null)
+			imei = telephony.getDeviceId();
+		
 		Log.d(TAG,"onCreate() finished");
 	}
 	public static boolean isEmulator() {
@@ -139,7 +152,12 @@ public class Service extends android.app.Service {
 		}
 		return name;
 	}
-
+	public String getBtMac() {
+		return btmac;
+	}
+	public String getImei() {
+		return imei;
+	}
 	@Override
 	public void onDestroy() {
 		// Final resource clean-up

@@ -37,14 +37,14 @@ import uk.ac.horizon.ubihelper.net.PeerConnectionScheduler;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.telephony.gsm.SmsMessage.MessageClass;
+import android.telephony.TelephonyManager;
 import android.util.Base64;
 import android.util.Log;
-import android.widget.Toast;
 
 /** Manages all interactions with Peers
  * 
@@ -103,7 +103,7 @@ public class PeerManager {
 	private static final String KEY_NAME = "name";
 	private static final String KEY_PORT = "port";
 	private static final String KEY_PINDIGEST = "pindigest";
-	private static final String KEY_PIN = "pind";
+	private static final String KEY_PIN = "pin";
 	private static final String KEY_PINNONCE = "pinnonce";
 	private static final String KEY_SECRET = "secret";
 	private static final String KEY_INFO = "info";
@@ -314,6 +314,8 @@ public class PeerManager {
 		String pindigest;
 		String id;
 		String secret1, secret2;
+		// done
+		public JSONObject peerInfo;
 		
 		// debug
 		public String detail;
@@ -330,6 +332,12 @@ public class PeerManager {
 			src = pi.src;
 			port = pi.port;
 			detail = pi.detail;
+		}
+		public PeerInfo(ClientInfo ci) {
+			id = ci.id;
+			instanceName = ci.name;
+			pc = ci.pc;
+			port = ci.port;
 		}
 	}
 	private void broadcastPeerState(PeerInfo pi) {
@@ -500,6 +508,7 @@ public class PeerManager {
 			updatePeer(pi);
 		}		
 	}
+	/** called on indication of avilable messages at client */ 
 	protected synchronized void checkMessages(ClientInfo ci) {
 		Message m = null;
 		while ((m=ci.pc.getMessage())!=null) {
@@ -516,6 +525,12 @@ public class PeerManager {
 			}
 			case STATE_NEGOTIATED_PROTOCOL: {
 				boolean ok = handleFirstMessage(ci, m);
+				if (!ok)
+					return;
+				break;
+			}
+			case STATE_PEER_PIN: {
+				boolean ok = handlePeerPinResponse(ci, m);
 				if (!ok)
 					return;
 				break;
@@ -551,6 +566,12 @@ public class PeerManager {
 		}
 		clients.remove(ci);
 	}
+	protected synchronized void failPeer(PeerInfo pi, String detail) {
+		pi.state = PeerState.STATE_CONNECTING_FAILED;
+		pi.detail = detail;
+		broadcastPeerState(pi);
+		removePeer(pi);
+	}
 	protected synchronized void checkMessages(PeerInfo pi) {
 		Message m = null;
 		while ((m=pi.pc.getMessage())!=null) {
@@ -558,10 +579,7 @@ public class PeerManager {
 			case STATE_NEGOTIATE_PROTOCOL: {
 				boolean ok = checkNegotiateProtocolResponse(m);
 				if (!ok) {
-					pi.state = PeerState.STATE_CONNECTING_FAILED;
-					pi.detail = "Incompatible protocol: "+m.body;
-					broadcastPeerState(pi);
-					removePeer(pi);
+					failPeer(pi, "Incompatible protocol: "+m.body);
 					return;
 				}
 				pi.state = PeerState.STATE_PEER_REQ;
@@ -577,13 +595,18 @@ public class PeerManager {
 					return;
 				break;
 			}
+			case STATE_PEER_DONE: {
+				boolean ok = handlePeerDoneResponse(pi, m);
+				if (!ok)
+					return;
+				break;
+			}
+			default:
+				Log.w(TAG,"Don't know what to do with message in state "+pi.state);
+				return;
 			}
 		}		
 		
-	}
-	private boolean handlePeerReqResponse(PeerInfo pi, Message m) {
-		// TODO Auto-generated method stub
-		return false;
 	}
 	private synchronized void startSrvDiscovery(final PeerInfo pi) {
 		// 1: do SRV discovery to get IP/Port
@@ -736,6 +759,94 @@ public class PeerManager {
 			Log.e(TAG,"Unsupported encoding (shoulnd't be): "+e);
 		}		
 	}	
+	/** called from checkMessage(pi) to handle message in state STATE_PEER_REQ */
+	private boolean handlePeerReqResponse(PeerInfo pi, Message m) {
+		if (m.type!=Message.Type.MANAGEMENT) {
+			failPeer(pi, "Received init_peer_req response of type "+m.type);
+			return false;
+		}
+		String pinGuess = null;
+		try {
+			JSONObject msg = new JSONObject(m.body);
+			String type = msg.getString(KEY_TYPE);
+			if (!MSG_RESP_PEER_PIN.equals(type)) {
+				failPeer(pi, "Received init_peer_req response "+type);
+				// TODO resp_peer_nopin
+				// TODO resp_peer_known
+				return false;
+			}
+			// id, name, port, pin
+			pinGuess = msg.getString(KEY_PIN);
+			pi.id = msg.getString(KEY_ID);
+			// TODO known IDs?
+			int port = msg.getInt(KEY_PORT);
+			if (port!=pi.port)
+				Log.w(TAG,"resp_peer_pin has different port: "+port+" vs "+pi.port);
+			String name = msg.getString(KEY_NAME);
+			if (!name.equals(pi.instanceName))
+				Log.w(TAG,"resp_peer_pin has different name: "+name+" vs "+pi.instanceName);
+		} catch (JSONException e) {
+			failPeer(pi, "Error in resp_peer_pin message: "+e);
+			return false;
+		}
+		Log.i(TAG,"Received resp_peer_pin in state peer_req with pin="+pinGuess);
+		// pin?
+		if (!pi.pin.equals(pinGuess)) {
+			failPeer(pi, "Incorrect pin: "+pinGuess);
+			return false;
+		}
+		// done
+		try {
+			JSONObject resp = new JSONObject();
+			resp.put(KEY_TYPE, MSG_INIT_PEER_DONE);
+			byte sbuf[] = new byte[8];
+			getRandom(sbuf);
+			pi.secret1 = Base64.encodeToString(sbuf, Base64.DEFAULT);
+			resp.put(KEY_SECRET, pi.secret1);
+			resp.put(KEY_PINNONCE, pi.pinnonce);
+			JSONObject info = getInfo();
+			if (info!=null)
+				resp.put(KEY_INFO, info);
+
+			Message r = new Message(Message.Type.MANAGEMENT, null, null, resp.toString());
+			pi.pc.sendMessage(r);
+			
+			pi.state = PeerState.STATE_PEER_DONE;
+			pi.detail = null;
+
+			broadcastPeerState(pi);
+
+			return true;
+			
+		} catch (JSONException e) {
+			// shouldn't happen!
+			Log.e(TAG,"JSON error (shoulnd't be): "+e);
+		}		
+		return false;
+	}
+	/** get info to pass to peer */
+	private synchronized JSONObject getInfo() {
+		try {
+			JSONObject info = new JSONObject();
+			// has address?
+			WifiInfo wifiinfo = wifi.getConnectionInfo();
+			String wifimac = wifiinfo.getMacAddress();
+			if (wifimac!=null)
+				info.put(KEY_WIFIMAC, wifi);
+			// note: cannot get BluetoothAdapter from comms thread if not a looper
+			String btmac = service.getBtMac();
+			if(btmac!=null)	
+				info.put(KEY_BTMAC, btmac);				
+			String imei = service.getImei();
+			if (imei!=null)
+				info.put(KEY_IMEI, imei);
+			return info;
+		} catch (JSONException e) {
+			// shouldn't happen!
+			Log.e(TAG,"JSON error (shoulnd't be): "+e);
+		}		
+		return null;
+	}
 	private boolean handleFirstMessage(ClientInfo ci, Message m) {
 		if (m.type!=Message.Type.MANAGEMENT) {
 			Log.w(TAG,"Received first message of type "+m.type);
@@ -761,11 +872,13 @@ public class PeerManager {
 		}
 	}
 	private static int peerRequestNotificationId = 2;
+	/** called from handleFirstMessage on receipt of init_peer_req message by client */
 	private synchronized boolean handlePeerReq(ClientInfo ci, JSONObject msg) {
 		try {
 			ci.id = msg.getString(KEY_ID);
 			ci.name =msg.getString(KEY_NAME);
 			ci.port = msg.getInt(KEY_PORT);
+			ci.pindigest = msg.getString(KEY_PINDIGEST);
 		} catch (JSONException e) {
 			Log.w(TAG,"Error unpacking init_peer_req: "+e);
 			removeClient(ci);
@@ -797,6 +910,118 @@ public class PeerManager {
 		
 		return true;
 	}
+	/** called on receipt of message after resp_peer_pin by client */
+	private boolean handlePeerPinResponse(ClientInfo ci, Message m) {
+		if (m.type!=Message.Type.MANAGEMENT) {
+			Log.w(TAG, "Received "+m.type+" message after resp_peer_pin");
+			removeClient(ci);
+			return false;
+		}
+		String pinnonce = null;
+		JSONObject peerInfo = null;
+		String secret1 = null;
+		try {
+			JSONObject msg = new JSONObject(m.body);
+			String type = msg.getString(KEY_TYPE);
+			if (!MSG_INIT_PEER_DONE.equals(type)) {
+				Log.w(TAG, "received "+type+" after resp_peer_pin");
+				removeClient(ci);
+				return false;
+			}
+			pinnonce = msg.getString(KEY_PINNONCE);
+			peerInfo = msg.getJSONObject(KEY_INFO);
+			secret1 = msg.getString(KEY_SECRET);
+		}
+		catch (JSONException e) {
+			Log.w(TAG,"Error unpacking resp_peer_pin response: "+e);
+			removeClient(ci);
+			return false;			
+		}
+		Log.i(TAG,"Received init_peer_done in state peer_pin with info="+peerInfo);
+		// check pin
+		try {
+			byte nbuf[] = Base64.decode(pinnonce, Base64.DEFAULT);
+			messageDigest.reset();
+			messageDigest.update(nbuf);
+			messageDigest.update(ci.pin.getBytes("UTF-8"));
+			byte dbuf[] = messageDigest.digest();
+			String pindigest = Base64.encodeToString(dbuf, Base64.DEFAULT);
+			if (!ci.pindigest.equals(pindigest)) {
+				Log.i(TAG,"Reject peer with incorrect pindigest");
+				removeClient(ci);
+				return false;
+			}
+		} catch (UnsupportedEncodingException e) {
+			// shouldn't happen!
+			Log.e(TAG,"Unsupported encoding (shoulnd't be): "+e);
+		}
+		// send response
+		String secret2 =  null;
+		try {
+			JSONObject resp = new JSONObject();
+			resp.put(KEY_TYPE, MSG_RESP_PEER_DONE);
+			JSONObject info = getInfo();
+			if (info!=null)
+				resp.put(KEY_INFO, info);
+			byte sbuf[] = new byte[8];
+			getRandom(sbuf);
+			secret2 = Base64.encodeToString(sbuf, Base64.DEFAULT);
+			resp.put(KEY_SECRET, secret2);
+			
+			Message r = new Message(Message.Type.MANAGEMENT, null, null, resp.toString());
+			ci.pc.sendMessage(r);
+			
+		}
+		catch (JSONException e) {
+			// shouldn't happen!
+			Log.e(TAG,"JSON error (shoulnd't be): "+e);			
+		}
+		
+		// convert to PeerInfo
+		PeerInfo pi = new PeerInfo(ci);
+		pi.secret1 = secret1;
+		pi.secret2 = secret2;
+		pi.state = PeerState.STATE_PEERED;
+		pi.peerInfo = peerInfo;
+		pi.src = ci.pc.getSocketChannel().socket().getInetAddress();
+		Log.i(TAG,"Converted ClientInfo to PeerInfo");
+		
+		clients.remove(ci);
+		peers.add(pi);
+		pi.pc.attach(pi);
+
+		Intent i = new Intent(ACTION_PEERS_CHANGED);
+		service.sendBroadcast(i);
+
+		// don't handle more messages as a client
+		return false;
+	}
+	/** called on receipt of message after init_peer_done in peer */
+	private boolean handlePeerDoneResponse(PeerInfo pi, Message m) {
+		if (m.type!=Message.Type.MANAGEMENT) {
+			failPeer(pi, "Received init_peer_done response of type "+m.type);
+			return false;
+		}
+		try {
+			JSONObject msg = new JSONObject(m.body);
+			String type = msg.getString(KEY_TYPE);
+			if (!MSG_RESP_PEER_DONE.equals(type)) {
+				failPeer(pi, "Received init_peer_done response "+type);
+				return false;
+			}
+			pi.secret2 = msg.getString(KEY_SECRET);
+			pi.peerInfo = msg.getJSONObject(KEY_INFO);
+		} catch (JSONException e) {
+			failPeer(pi, "Error in resp_peer_done message: "+e);
+			return false;
+		}
+		// all done
+		pi.state = PeerState.STATE_PEERED;
+		pi.detail = null;
+		broadcastPeerState(pi);
+
+		return true;
+	}
 	private String getDeviceId() {
 		return service.getDeviceId();
 	}
@@ -817,6 +1042,7 @@ public class PeerManager {
 		public String name;
 		public String id;
 		public int port;
+		String pindigest;
 		String pin;
 		
 		public ClientInfo(PeerConnection pc) {
@@ -857,6 +1083,7 @@ public class PeerManager {
 			Log.w(TAG,"Could not find ClientInfo for reject with id "+triggerIntent.getExtras().getString(EXTRA_ID));
 			return;
 		}
+		ci.pin = pin;
 		// notification?
 		hideClientNotification(ci);
 		// next step

@@ -13,6 +13,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -127,7 +128,8 @@ public class PeerConnectionScheduler extends Thread {
 									listener.onAccept(this, pc);
 								}
 								catch (Exception e) {
-									logger.warning("Error in onAccept listener: "+e.getMessage());
+									//logger.warning("Error in onAccept listener: "+e.getMessage());
+									logger.log(Level.WARNING, "Error in onAccept listener", e);
 								}
 							}
 						}
