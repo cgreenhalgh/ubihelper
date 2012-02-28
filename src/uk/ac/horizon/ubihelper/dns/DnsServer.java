@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.dns;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -12,7 +12,7 @@ import java.net.SocketException;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
-import uk.ac.horizon.ubihelper.DnsProtocol.SrvData;
+import uk.ac.horizon.ubihelper.dns.DnsProtocol.SrvData;
 
 //import android.util.Log;
 

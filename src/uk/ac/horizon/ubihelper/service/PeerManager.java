@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.service;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -28,12 +28,18 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import uk.ac.horizon.ubihelper.DnsProtocol.RR;
-import uk.ac.horizon.ubihelper.PeerManager.SearchInfo;
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.drawable;
+import uk.ac.horizon.ubihelper.dns.DnsClient;
+import uk.ac.horizon.ubihelper.dns.DnsProtocol;
+import uk.ac.horizon.ubihelper.dns.DnsUtils;
+import uk.ac.horizon.ubihelper.dns.DnsProtocol.RR;
 import uk.ac.horizon.ubihelper.net.Message;
 import uk.ac.horizon.ubihelper.net.OnPeerConnectionListener;
 import uk.ac.horizon.ubihelper.net.PeerConnection;
 import uk.ac.horizon.ubihelper.net.PeerConnectionScheduler;
+import uk.ac.horizon.ubihelper.service.PeerManager.SearchInfo;
+import uk.ac.horizon.ubihelper.ui.PeerRequestActivity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;

@@ -1,8 +1,14 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.ui;
 
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.id;
+import uk.ac.horizon.ubihelper.R.layout;
+import uk.ac.horizon.ubihelper.service.PeerManager;
+import uk.ac.horizon.ubihelper.service.Service;
+import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;

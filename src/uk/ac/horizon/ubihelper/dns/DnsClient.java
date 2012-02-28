@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.dns;
 
 import java.io.IOException;
 import java.net.DatagramPacket;

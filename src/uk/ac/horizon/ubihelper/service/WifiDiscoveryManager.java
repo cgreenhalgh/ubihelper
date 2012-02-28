@@ -1,14 +1,19 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.service;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 
-import uk.ac.horizon.ubihelper.DnsProtocol.SrvData;
+import uk.ac.horizon.ubihelper.dns.DnsProtocol;
+import uk.ac.horizon.ubihelper.dns.DnsServer;
+import uk.ac.horizon.ubihelper.dns.DnsUtils;
+import uk.ac.horizon.ubihelper.dns.DnsProtocol.SrvData;
+import uk.ac.horizon.ubihelper.ui.MainPreferences;
+import uk.ac.horizon.ubihelper.ui.WifiStatusActivity;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;

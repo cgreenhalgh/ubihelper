@@ -1,10 +1,12 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.dns;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+
+import uk.ac.horizon.ubihelper.ui.WifiStatusActivity;
 
 import android.util.Log;
 

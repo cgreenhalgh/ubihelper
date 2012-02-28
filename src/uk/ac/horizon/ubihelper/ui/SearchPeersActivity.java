@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.ui;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -9,7 +9,13 @@ import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import uk.ac.horizon.ubihelper.DnsProtocol.RR;
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.layout;
+import uk.ac.horizon.ubihelper.dns.DnsProtocol.RR;
+import uk.ac.horizon.ubihelper.service.PeerManager;
+import uk.ac.horizon.ubihelper.service.Service;
+import uk.ac.horizon.ubihelper.service.PeerManager.SearchInfo;
+import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 
 import android.app.Activity;
 import android.app.AlertDialog;

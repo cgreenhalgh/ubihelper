@@ -1,9 +1,17 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.ui;
 
-import uk.ac.horizon.ubihelper.PeerManager.PeerInfo;
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.id;
+import uk.ac.horizon.ubihelper.R.layout;
+import uk.ac.horizon.ubihelper.service.PeerManager;
+import uk.ac.horizon.ubihelper.service.Service;
+import uk.ac.horizon.ubihelper.service.PeerManager.PeerInfo;
+import uk.ac.horizon.ubihelper.service.PeerManager.PeerState;
+import uk.ac.horizon.ubihelper.service.PeerManager.SearchInfo;
+import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;

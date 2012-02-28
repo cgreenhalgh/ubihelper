@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.dns;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -93,7 +93,7 @@ public class DnsProtocol {
 		return p;
 	}
 
-	static class SrvData {
+	public static class SrvData {
 		public int priority; // 16 bit
 		public int weight; // 16 bit
 		public int port; // 16 bit

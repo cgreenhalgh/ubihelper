@@ -1,11 +1,13 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.httpserver;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import uk.ac.horizon.ubihelper.service.Service;
 
 import android.util.Log;
 

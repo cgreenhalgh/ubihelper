@@ -1,11 +1,13 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.service;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import uk.ac.horizon.ubihelper.channel.NamedChannel;
 
 import android.content.Context;
 import android.hardware.Sensor;

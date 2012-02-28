@@ -1,8 +1,11 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.ui;
 
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.id;
+import uk.ac.horizon.ubihelper.R.layout;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;

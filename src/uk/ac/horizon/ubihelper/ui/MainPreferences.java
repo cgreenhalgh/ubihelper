@@ -1,9 +1,14 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.ui;
 
-import uk.ac.horizon.ubihelper.Service.LocalBinder;
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.id;
+import uk.ac.horizon.ubihelper.R.menu;
+import uk.ac.horizon.ubihelper.R.xml;
+import uk.ac.horizon.ubihelper.service.Service;
+import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -32,11 +37,11 @@ import android.widget.Toast;
  */
 public class MainPreferences extends PreferenceActivity {
 	static final String TAG = "ubihelper-pref";
-	static final String RUN_PREFERENCE = "run_service";
-	static final String HTTP_PORT_PREFERENCE = "http_port";
-	static final String HTTP_PATH_PREFERENCE = "http_path";
-	static final String WIFIDISC_PREFERENCE = "wifidisc";
-	static final String WIFIDISC_NAME_PREFERENCE = "wifidisc_name";
+	public static final String RUN_PREFERENCE = "run_service";
+	public static final String HTTP_PORT_PREFERENCE = "http_port";
+	public static final String HTTP_PATH_PREFERENCE = "http_path";
+	public static final String WIFIDISC_PREFERENCE = "wifidisc";
+	public static final String WIFIDISC_NAME_PREFERENCE = "wifidisc_name";
 	private EditTextPreference httpPortPref;
 	private EditTextPreference httpPathPref;
 	private EditTextPreference wifiNamePref;

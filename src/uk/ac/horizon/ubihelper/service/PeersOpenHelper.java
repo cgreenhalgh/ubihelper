@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.service;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;

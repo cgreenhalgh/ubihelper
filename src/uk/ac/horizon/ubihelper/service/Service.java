@@ -1,7 +1,7 @@
 /**
  * 
  */
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.service;
 
 import java.util.LinkedList;
 
@@ -9,6 +9,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.drawable;
+import uk.ac.horizon.ubihelper.R.string;
+import uk.ac.horizon.ubihelper.channel.NamedChannel;
+import uk.ac.horizon.ubihelper.httpserver.HttpContinuation;
+import uk.ac.horizon.ubihelper.httpserver.HttpError;
+import uk.ac.horizon.ubihelper.httpserver.HttpListener;
+import uk.ac.horizon.ubihelper.ui.MainPreferences;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -194,7 +203,7 @@ public class Service extends android.app.Service {
 	/** Binder subclass (inner class) with methods for local interaction with service */
 	public class LocalBinder extends android.os.Binder {
 		// local methods... direct access to service
-		Service getService() {
+		public Service getService() {
 			return Service.this;
 		}
 	}

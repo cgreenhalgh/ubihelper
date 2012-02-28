@@ -1,4 +1,4 @@
-package uk.ac.horizon.ubihelper;
+package uk.ac.horizon.ubihelper.ui;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,6 +9,10 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+
+import uk.ac.horizon.ubihelper.R;
+import uk.ac.horizon.ubihelper.R.id;
+import uk.ac.horizon.ubihelper.R.layout;
 
 import android.app.Activity;
 import android.os.Bundle;
