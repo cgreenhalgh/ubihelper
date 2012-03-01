@@ -5,10 +5,12 @@ package uk.ac.horizon.ubihelper.j2se;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.nio.channels.ServerSocketChannel;
+import java.util.Enumeration;
 import java.util.logging.Logger;
 
 import org.json.JSONObject;
@@ -45,6 +47,17 @@ public class Server {
 	
 	public Server() {
 	}
+	public static InetAddress getInetAddress(NetworkInterface ni) {
+		// IPv4?
+		Enumeration<InetAddress> as = ni.getInetAddresses();
+		while (as.hasMoreElements()) {
+			InetAddress a= as.nextElement();
+			if (a instanceof Inet4Address)
+				return a;
+		}
+		// any
+		return ni.getInetAddresses().nextElement();
+	}
 	public void init() {
 		protocol = new MyProtocolManager();
 		peerConnectionListener = new ProtocolManager.ClientConnectionListener(protocol);
@@ -75,7 +88,7 @@ public class Server {
 		dns = new DnsServer();
 		NetworkInterface ni = DnsClient.getFirstActiveInterface();
 		dns.setNeworkInterface(ni);
-		InetAddress ip = ni.getInetAddresses().nextElement();
+		InetAddress ip = getInetAddress(ni);
 		logger.info("Binding for multicast to "+ip.getHostAddress());
 
 		id = ip.getHostAddress()+":"+serverPort;

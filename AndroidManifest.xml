@@ -53,9 +53,9 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
-        <activity android:name=".ManagePeersActivity" android:enabled="true"></activity>
-        <activity android:name=".ui.SearchPeersActivityity" android:enabled="true"></activity>
-        <activity android:enabled="true" android:name=".ui.PeerInfoActivityInfoActivity"></activity>
+        <activity android:name=".ui.ManagePeersActivity" android:enabled="true"></activity>
+        <activity android:name=".ui.SearchPeersActivity" android:enabled="true"></activity>
+        <activity android:enabled="true" android:name=".ui.PeerInfoActivity"></activity>
         <activity android:name=".ui.PeerRequestActivity" android:enabled="true"></activity>
     </application>
 
