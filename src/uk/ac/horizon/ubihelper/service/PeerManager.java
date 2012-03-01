@@ -284,7 +284,8 @@ public class PeerManager {
 		STATE_NEGOTIATE_PROTOCOL,
 		STATE_PEER_REQ,
 		STATE_PEER_DONE,
-		STATE_PEERED
+		STATE_PEERED, 
+		STATE_PEERED_UNTRUSTED
 	}
 	/** peer info */
 	public static class PeerInfo implements Cloneable {
@@ -504,11 +505,17 @@ public class PeerManager {
 			super.removeClient(ci);
 			clients.remove(ci);
 		}
-		/** called from handleFirstMessage on receipt of init_peer_req message by client */
 		@Override
-		protected boolean clientHandlePeerReq(ClientInfo ci, MessageUtils.InitPeerReq req) {
-			if (!super.clientHandlePeerReq(ci, req))
-				return false;
+		protected byte [] base64Decode(String str) {
+			return Base64.decode(str, Base64.DEFAULT);
+		}
+		@Override
+		protected String base64Encode(byte [] bs) {
+			return Base64.encodeToString(bs, Base64.DEFAULT);
+		}
+		/** prompt for PIN, e.g. from user. return false (default) if cannot prompt. */
+		@Override
+		protected boolean clientPromptForPin(ClientInfo ci) {
 			// Notification?
 			// create taskbar notification
 			int icon = R.drawable.notification_icon;
@@ -531,15 +538,12 @@ public class PeerManager {
 			NotificationManager mNotificationManager = (NotificationManager) service.getSystemService(Service.NOTIFICATION_SERVICE);
 			//service.(ci.notificationId, notification);	
 			mNotificationManager.notify(ci.notificationId, notification);
-			ci.state = ClientState.STATE_WAITING_FOR_PIN;
 			
 			return true;
 		}
-		/** called on receipt of message after resp_peer_pin by client */
+		/** called when successfully peered */
 		@Override
-		protected boolean clientHandlePeerPinResponse(ClientInfo ci, MessageUtils.InitPeerDone rec) {
-			if (!super.clientHandlePeerPinResponse(ci, rec))
-				return false;
+		protected boolean clientHandlePeered(ClientInfo ci) {
 			// convert to PeerInfo
 			PeerInfo pi = new PeerInfo(ci);
 			pi.secret1 = ci.secret1;
@@ -558,6 +562,22 @@ public class PeerManager {
 
 			// don't handle more messages as a client
 			return false;
+		}
+		@Override
+		protected JSONObject getInfo() {
+			return PeerManager.this.getInfo();
+		}
+		@Override
+		protected String getName() {
+			return service.getDeviceName();
+		}
+		@Override
+		protected int getPort() {
+			return serverPort;
+		}
+		@Override
+		protected String getId() {
+			return getDeviceId();
 		}
 
 	}
@@ -759,8 +779,10 @@ public class PeerManager {
 			JSONObject msg = new JSONObject(m.body);
 			String type = msg.getString(MessageUtils.KEY_TYPE);
 			if (!MessageUtils.MSG_RESP_PEER_PIN.equals(type)) {
+				if (MessageUtils.MSG_RESP_PEER_NOPIN.equals(type)) {
+					return handlePeerNopin(pi, msg);
+				}
 				failPeer(pi, "Received init_peer_req response "+type);
-				// TODO resp_peer_nopin
 				// TODO resp_peer_known
 				return false;
 			}
@@ -772,7 +794,9 @@ public class PeerManager {
 			if (port!=pi.port)
 				Log.w(TAG,"resp_peer_pin has different port: "+port+" vs "+pi.port);
 			String name = msg.getString(MessageUtils.KEY_NAME);
-			if (!name.equals(pi.instanceName))
+			if (pi.instanceName==null)
+				pi.instanceName = name;
+			else if (!name.equals(pi.instanceName)) 
 				Log.w(TAG,"resp_peer_pin has different name: "+name+" vs "+pi.instanceName);
 		} catch (JSONException e) {
 			failPeer(pi, "Error in resp_peer_pin message: "+e);
@@ -812,6 +836,34 @@ public class PeerManager {
 			Log.e(TAG,"JSON error (shoulnd't be): "+e);
 		}		
 		return false;
+	}
+	/** nopin response from peer in response to pin request */
+	private boolean handlePeerNopin(PeerInfo pi, JSONObject msg) {
+		try {
+			pi.id = msg.getString(MessageUtils.KEY_ID);
+			// TODO known IDs?
+			int port = msg.getInt(MessageUtils.KEY_PORT);
+			if (port!=pi.port)
+				Log.w(TAG,"resp_peer_nopin has different port: "+port+" vs "+pi.port);
+			String name = msg.getString(MessageUtils.KEY_NAME);
+			if (pi.instanceName==null)
+				pi.instanceName = name;
+			else if (!name.equals(pi.instanceName)) 
+				Log.w(TAG,"resp_peer_nopin has different name: "+name+" vs "+pi.instanceName);
+			pi.secret2 = msg.getString(MessageUtils.KEY_SECRET);
+			pi.peerInfo = msg.getJSONObject(MessageUtils.KEY_INFO);
+		} catch (JSONException e) {
+			failPeer(pi, "Error in resp_peer_pin message: "+e);
+			return false;
+		}
+		Log.i(TAG,"Received resp_peer_nopin in state peer_req");
+
+		pi.state = PeerState.STATE_PEERED_UNTRUSTED;
+		pi.detail = "no pin";
+
+		broadcastPeerState(pi);
+
+		return true;
 	}
 	/** get info to pass to peer */
 	private synchronized JSONObject getInfo() {
@@ -895,21 +947,9 @@ public class PeerManager {
 		// notification?
 		hideClientNotification(ci);
 		// next step
-		// create peer request
-		JSONObject msg = new JSONObject();
-		try {
-			msg.put(MessageUtils.KEY_TYPE, MessageUtils.MSG_RESP_PEER_PIN);
-			msg.put(MessageUtils.KEY_ID, getDeviceId());
-			msg.put(MessageUtils.KEY_PORT, serverPort);
-			msg.put(MessageUtils.KEY_NAME, service.getDeviceName());
-			msg.put(MessageUtils.KEY_PIN, pin);
-			Message m = new Message(Message.Type.MANAGEMENT, null, null, msg.toString());
-			ci.pc.sendMessage(m);
-			ci.state = ClientState.STATE_PEER_PIN;			
-		}
-		catch (JSONException e) {
-			Log.e(TAG,"JSON error (shouldn't be) creating resp_peer_pin message: "+e);
-		}
+		Message m = MessageUtils.getRespPeerPin(getDeviceId(), serverPort, service.getDeviceName(), pin);
+		ci.pc.sendMessage(m);
+		ci.state = ClientState.STATE_PEER_PIN;			
 	}
 	/** public API - peer request reject */
 	public synchronized void rejectPeerRequest(Intent triggerIntent) {

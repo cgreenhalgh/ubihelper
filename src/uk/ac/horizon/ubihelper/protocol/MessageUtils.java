@@ -9,11 +9,7 @@ import java.util.logging.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.util.Base64;
-import android.util.Log;
 import uk.ac.horizon.ubihelper.net.Message;
-import uk.ac.horizon.ubihelper.net.Message.Type;
-import uk.ac.horizon.ubihelper.service.PeerManager;
 
 /** Peer protocl message utilities, e.g. build and parse.
  *  
@@ -27,7 +23,7 @@ public class MessageUtils {
 	public static final String MSG_INIT_PEER_REQ = "init_peer_req";
 	private static final String MSG_RESP_PEER_REQ = "resp_peer_req";
 	public static final String MSG_INIT_PEER_DONE = "init_peer_done";
-	private static final String MSG_RESP_PEER_NOPIN = "resp_peer_nopin";
+	public static final String MSG_RESP_PEER_NOPIN = "resp_peer_nopin";
 	public static final String MSG_RESP_PEER_PIN = "resp_peer_pin";
 	public static final String MSG_RESP_PEER_DONE = "resp_peer_done";
 	/** management message keys */
@@ -108,6 +104,40 @@ public class MessageUtils {
 			resp.put(MessageUtils.KEY_SECRET, secret);
 			
 			return new Message(Message.Type.MANAGEMENT, null, null, resp.toString());
+		}
+		catch (JSONException e) {
+			// shouldn't happen!
+			logger.warning("JSON error (shoulnd't be): "+e);			
+			return null;
+		}
+	}
+	public static Message getRespPeerPin(String id, int port, String name, String pin) {
+		JSONObject msg = new JSONObject();
+		try {
+			msg.put(MessageUtils.KEY_TYPE, MessageUtils.MSG_RESP_PEER_PIN);
+			msg.put(MessageUtils.KEY_ID, id);
+			msg.put(MessageUtils.KEY_PORT, port);
+			msg.put(MessageUtils.KEY_NAME, name);
+			msg.put(MessageUtils.KEY_PIN, pin);
+			return new Message(Message.Type.MANAGEMENT, null, null, msg.toString());
+		}
+		catch (JSONException e) {
+			logger.severe("JSON error (shouldn't be) creating resp_peer_pin message: "+e);
+			return null;
+		}
+	}
+
+	public static Message getRespPeerNopin(String id, int port, String name, JSONObject info, String secret) {
+		// send response
+		try {
+			JSONObject msg = new JSONObject();
+			msg.put(MessageUtils.KEY_TYPE, MessageUtils.MSG_RESP_PEER_NOPIN);
+			msg.put(MessageUtils.KEY_ID, id);
+			msg.put(MessageUtils.KEY_PORT, port);
+			msg.put(MessageUtils.KEY_NAME, name);
+			msg.put(MessageUtils.KEY_INFO, info);
+			msg.put(MessageUtils.KEY_SECRET, secret);
+			return new Message(Message.Type.MANAGEMENT, null, null, msg.toString());
 		}
 		catch (JSONException e) {
 			// shouldn't happen!

@@ -11,6 +11,8 @@ import java.net.ServerSocket;
 import java.nio.channels.ServerSocketChannel;
 import java.util.logging.Logger;
 
+import org.json.JSONObject;
+
 import uk.ac.horizon.ubihelper.dns.DnsClient;
 import uk.ac.horizon.ubihelper.dns.DnsProtocol;
 import uk.ac.horizon.ubihelper.dns.DnsServer;
@@ -19,7 +21,8 @@ import uk.ac.horizon.ubihelper.dns.DnsProtocol.SrvData;
 import uk.ac.horizon.ubihelper.net.PeerConnection;
 import uk.ac.horizon.ubihelper.net.PeerConnectionScheduler;
 import uk.ac.horizon.ubihelper.protocol.ClientInfo;
-import android.util.Log;
+import uk.ac.horizon.ubihelper.protocol.ProtocolManager;
+import uk.ac.horizon.ubihelper.protocol.ProtocolManager.ClientConnectionListener;
 
 /** Desktop server.
  * 
@@ -27,17 +30,24 @@ import android.util.Log;
  *
  */
 public class Server {
-	static Logger logger = Logger.getLogger(Server.class);
+	static Logger logger = Logger.getLogger(Server.class.getName());
 
-	private ServerSocketChannel serverSocket;
+	private ServerSocketChannel serverSocketChannel;
 	private PeerConnectionScheduler selector;
 	private boolean failed = false;
 	private int serverPort;
 	private DnsServer dns;
+	private MyProtocolManager protocol;
+	private ClientConnectionListener peerConnectionListener;
+	private String id;
+	
+	private static int DEFAULT_TTL = 600;
 	
 	public Server() {
 	}
 	public void init() {
+		protocol = new MyProtocolManager();
+		peerConnectionListener = new ProtocolManager.ClientConnectionListener(protocol);
 		// create channels
 		// create server socket
 		try {
@@ -67,6 +77,8 @@ public class Server {
 		dns.setNeworkInterface(ni);
 		InetAddress ip = ni.getInetAddresses().nextElement();
 		logger.info("Binding for multicast to "+ip.getHostAddress());
+
+		id = ip.getHostAddress()+":"+serverPort;
 		
 		String servicename = DnsUtils.getServiceDiscoveryName();
 		String name = ip.getHostAddress();
@@ -76,10 +88,10 @@ public class Server {
 				DnsProtocol.CLASS_IN, DEFAULT_TTL, DnsProtocol.srvToData(srv)));
 
 		String instancename = "Server on "+ip;
-		Log.d(TAG,"Discoverable as "+instancename+" "+servicename);
+		logger.info("Discoverable as "+instancename+" "+servicename);
 		DnsProtocol.RR ptrRR = new DnsProtocol.RR(servicename, DnsProtocol.TYPE_PTR, 
 				DnsProtocol.CLASS_IN, DEFAULT_TTL, DnsProtocol.ptrToData(instancename, servicename));
-		dnsServer.add(ptrRR);
+		dns.add(ptrRR);
 
 		dns.start();
 	}
@@ -96,7 +108,47 @@ public class Server {
 		}
 	};
 
+	private class MyProtocolManager extends ProtocolManager {
 
+		@Override
+		protected byte[] base64Decode(String str) {
+			return Base64.decode(str);
+		}
+
+		@Override
+		protected String base64Encode(byte[] bs) {
+			return Base64.encode(bs);
+		}
+
+		@Override
+		protected boolean clientHandlePeered(ClientInfo ci) {
+			// ...?
+			logger.info("New peer establised");
+			return false;
+		}
+
+		@Override
+		protected JSONObject getInfo() {
+			return new JSONObject();
+		}
+
+		@Override
+		protected String getName() {
+			return "Server "+id;
+		}
+
+		@Override
+		protected int getPort() {
+			return serverPort;
+		}
+
+		@Override
+		protected String getId() {
+			return id;
+		}
+		
+	}
+	
 	/**
 	 * @param args
 	 */

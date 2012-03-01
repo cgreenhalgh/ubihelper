@@ -16,14 +16,13 @@ import org.json.JSONObject;
 import uk.ac.horizon.ubihelper.net.Message;
 import uk.ac.horizon.ubihelper.net.OnPeerConnectionListener;
 import uk.ac.horizon.ubihelper.net.PeerConnection;
-import android.util.Base64;
 
 /** Home for peer protocol logic/state machine.
  * 
  * @author cmg
  *
  */
-public class ProtocolManager {
+public abstract class ProtocolManager {
 	static Logger logger = Logger.getLogger(ProtocolManager.class.getName());
 	
 	private SecureRandom srandom;
@@ -81,7 +80,7 @@ public class ProtocolManager {
 	}
 
 	/** called on indication of avilable messages at client */ 
-	protected void clientCheckMessages(ClientInfo ci) {
+	private void clientCheckMessages(ClientInfo ci) {
 		Message m = null;
 		Object msg;
 		try {
@@ -138,29 +137,51 @@ public class ProtocolManager {
 		}
 	}
 	/** called from handleFirstMessage on receipt of init_peer_req message by client */
-	protected boolean clientHandlePeerReq(ClientInfo ci, MessageUtils.InitPeerReq req) {
+	private boolean clientHandlePeerReq(ClientInfo ci, MessageUtils.InitPeerReq req) {
 		ci.id = req.id;
 		ci.name = req.name;
 		ci.port = req.port;
 		ci.pindigest = req.pindigest;
-		ci.state = ClientState.STATE_WAITING_FOR_PIN;
-		// NEEDS MORE - override!
-		return true;
+		boolean prompted = clientPromptForPin(ci);
+		if (prompted) {
+			ci.state = ClientState.STATE_WAITING_FOR_PIN;
+			return true;
+		}
+		else {
+			// can't do pin!
+			// send response
+			ci.secret2 = getSecret();
+			Message r = MessageUtils.getRespPeerNopin(getId(), getPort(), getName(), getInfo(), ci.secret2);
+			ci.pc.sendMessage(r);
+
+			ci.state = ClientState.STATE_PEERED;
+
+			//  sub-class handle peered
+			return clientHandlePeered(ci);
+		}
 	}
+
+	/** prompt for PIN, e.g. from user. return false (default) if cannot prompt. */
+	protected boolean clientPromptForPin(ClientInfo ci) {
+		return false;
+	}
+	protected abstract byte [] base64Decode(String str);
+	protected abstract String base64Encode(byte [] bs);
+
 	/** called on receipt of message after resp_peer_pin by client */
-	protected boolean clientHandlePeerPinResponse(ClientInfo ci, MessageUtils.InitPeerDone rec) {
+	private boolean clientHandlePeerPinResponse(ClientInfo ci, MessageUtils.InitPeerDone rec) {
 		ci.pinnonce = rec.pinnonce;
 		ci.peerInfo = rec.info;
 		ci.secret1 = rec.secret;
 		logger.warning("Received init_peer_done in state peer_pin with info="+ci.peerInfo);
 		// check pin
 		try {
-			byte nbuf[] = Base64.decode(ci.pinnonce, Base64.DEFAULT);
+			byte nbuf[] = base64Decode(ci.pinnonce);
 			messageDigest.reset();
 			messageDigest.update(nbuf);
 			messageDigest.update(ci.pin.getBytes("UTF-8"));
 			byte dbuf[] = messageDigest.digest();
-			String pindigest = Base64.encodeToString(dbuf, Base64.DEFAULT);
+			String pindigest = base64Encode(dbuf);
 			if (!ci.pindigest.equals(pindigest)) {
 				logger.warning("Reject peer with incorrect pindigest");
 				removeClient(ci);
@@ -171,17 +192,25 @@ public class ProtocolManager {
 			logger.warning("Unsupported encoding (shoulnd't be): "+e);
 		}
 		// send response
-		byte sbuf[] = new byte[8];
-		getRandom(sbuf);
-		ci.secret2 = Base64.encodeToString(sbuf, Base64.DEFAULT);
+		ci.secret2 = getSecret();
 		Message r = MessageUtils.getRespPeerDone(getInfo(), ci.secret2);
 		ci.pc.sendMessage(r);
 
 		ci.state = ClientState.STATE_PEERED;
-		return true;
-	}
 
-	protected JSONObject getInfo() {
-		return new JSONObject();
+		//  sub-class handle peered
+		return clientHandlePeered(ci);
 	}
+	private String getSecret() {
+		byte sbuf[] = new byte[8];
+		getRandom(sbuf);
+		return base64Encode(sbuf);
+	}
+	/** called when successfully peered */
+	protected abstract boolean clientHandlePeered(ClientInfo ci);
+
+	protected abstract JSONObject getInfo();
+	protected abstract String getName();
+	protected abstract int getPort();
+	protected abstract String getId();
 }
