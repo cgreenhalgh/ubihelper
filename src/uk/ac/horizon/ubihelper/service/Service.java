@@ -13,7 +13,10 @@ import org.json.JSONTokener;
 import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.drawable;
 import uk.ac.horizon.ubihelper.R.string;
+import uk.ac.horizon.ubihelper.channel.ChannelManager;
 import uk.ac.horizon.ubihelper.channel.NamedChannel;
+import uk.ac.horizon.ubihelper.channel.PullSubscription;
+import uk.ac.horizon.ubihelper.channel.Subscription;
 import uk.ac.horizon.ubihelper.httpserver.HttpContinuation;
 import uk.ac.horizon.ubihelper.httpserver.HttpError;
 import uk.ac.horizon.ubihelper.httpserver.HttpListener;
@@ -54,12 +57,12 @@ public class Service extends android.app.Service {
 	private boolean wifiDiscoverable;
 	private WifiDiscoveryManager wifiDiscoveryManager;
 	private Handler mHandler;
-	private LinkedList<NamedChannel> channels = new LinkedList<NamedChannel>();
 	private PeerManager peerManager;
 	private BluetoothAdapter bluetooth;
 	private String btmac;
 	private TelephonyManager telephony;
 	private String imei;
+	private ChannelManager channelManager;
 	
 	@Override
 	public void onCreate() {
@@ -86,13 +89,14 @@ public class Service extends android.app.Service {
 
 		startForeground(RUNNING_ID, notification);	
 		
+		channelManager = new ChannelManager();
 		// sensors
 		if (!isEmulator()) {
 			Log.d(TAG,"Create sensor channels...");
 			SensorChannel magnetic = new SensorChannel("magnetic", this, Sensor.TYPE_MAGNETIC_FIELD);
-			channels.add(magnetic);
+			channelManager.addChannel(magnetic);
 			SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
-			channels.add(accelerometer);
+			channelManager.addChannel(accelerometer);
 		}
 		Log.d(TAG,"Create http server...");
 		
@@ -260,6 +264,8 @@ public class Service extends android.app.Service {
 		return mHandler.post(task);
 	}
 	
+	private static final String HTTP_SUBSCRIPTION_ID = "http_subscription";
+	
 	private String handleRequest(String path, String body) throws HttpError {
 		Log.d(TAG,"handleRequest "+path+" "+body);
 		String myPath = getPath();
@@ -280,22 +286,28 @@ public class Service extends android.app.Service {
 				JSONObject resp = new JSONObject();
 				resp.put("name", name);
 				
-				NamedChannel nc = null;
-				for (int ci=0; nc==null && ci<channels.size(); ci++) {
-					if (channels.get(i).getName().equals(name))
-						nc = channels.get(i);
+				Subscription s = channelManager.findSubscription(name, HTTP_SUBSCRIPTION_ID);
+				PullSubscription ps = null;
+				if (s==null) {
+					ps = new PullSubscription(name, count);
+					channelManager.addSubscription(ps);
 				}
-				if (nc!=null) {
-					JSONArray values = new JSONArray();
-					resp.put("values", values);
-
-					nc.updateConfiguration(count, period, timeout);
-					LinkedList<JSONObject> vs = nc.getValues();
+				else if (s instanceof PullSubscription) {
+					ps = ((PullSubscription)s);
+					ps.setCount(count);
+				}
+				else 
+					Log.w(TAG,"HTTP update count on subscription "+name+" - not PullSubscription: "+s);
+				s.updateConfiguration(period, period/2, timeout);
+				channelManager.refreshChannel(name);
+				
+				JSONArray values = new JSONArray();
+				resp.put("values", values);
+				if (ps!=null) {
+					// should be!
+					LinkedList<JSONObject> vs = ps.getValues();
 					for (JSONObject v : vs)
 						values.put(v);
-							
-				} else {
-					Log.d(TAG,"Unknown channel "+name);
 				}
 				response.put(resp);
 			}
@@ -315,4 +327,17 @@ public class Service extends android.app.Service {
 		Log.w(TAG,"Could not get device ID");
 		return "UNKNOWNID";
 	}	
+	
+	/** public API - get initial value and create BroadcastIntentSubscription for name */
+	public BroadcastIntentSubscription watchChannel(String channelName, double period) {
+		BroadcastIntentSubscription bis = new BroadcastIntentSubscription(this, channelName);
+		// may broadcast immediately!
+		channelManager.addSubscription(bis);
+		channelManager.refreshChannel(channelName);
+		return bis;
+	}
+	/** public API */
+	public void unwatchChannel(BroadcastIntentSubscription subscription) {
+		channelManager.removeSubscription(subscription);
+	}
 }

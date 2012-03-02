@@ -7,6 +7,7 @@ import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.id;
 import uk.ac.horizon.ubihelper.R.menu;
 import uk.ac.horizon.ubihelper.R.xml;
+import uk.ac.horizon.ubihelper.channel.ChannelManager;
 import uk.ac.horizon.ubihelper.service.Service;
 import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 import android.bluetooth.BluetoothAdapter;
@@ -120,6 +121,12 @@ public class MainPreferences extends PreferenceActivity {
 		case R.id.wifistatus_option:
 		{
 			Intent i  = new Intent(this, WifiStatusActivity.class); 
+			startActivity(i);
+			return true;
+		}
+		case R.id.channels_option:
+		{
+			Intent i  = ChannelListActivity.getStartActivityIntent(this);
 			startActivity(i);
 			return true;
 		}

@@ -58,6 +58,8 @@
         <activity android:enabled="true" android:name=".ui.PeerInfoActivity"></activity>
         <activity android:name=".ui.PeerRequestActivity" android:enabled="true"></activity>
         <activity android:enabled="true" android:name=".ui.PeerManualAddActivity"></activity>
-    </application>
+        <activity android:enabled="true" android:name=".ui.ChannelValueActivity"></activity>
+        <activity android:enabled="true" android:name=".ui.ChannelListActivity"></activity>
+        </application>
 
 </manifest>

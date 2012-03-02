@@ -25,7 +25,6 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 	private static final String TAG = "ubihelper-sensor";
 	private SensorManager mSensorManager;
 	private Sensor mSensor;
-	private boolean active = false;
 	
 	public SensorChannel(String name, Service service, int sensorType) {
 		super(name);
@@ -35,21 +34,19 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 			Log.w(TAG,"No sensor found for "+name+" (type "+sensorType+")");
 	}
 
-	public synchronized void updateConfiguration(int count, double period,
-			double timeout) {
-		double oldPeriod = this.period;
-		super.updateConfiguration(count, period, timeout);
-		if ((isExpired() || oldPeriod!=period) && active) {
-			mSensorManager.unregisterListener(this);
-			active = false;
-			clearValues();
-			Log.d(TAG,"Stop on update sensor "+name);
-		}
-		else if (!active && !isExpired() && mSensor!=null) {
-			mSensorManager.registerListener(this, mSensor, (int)(1000000*period));
-			active = true;
-			Log.d(TAG,"Start sensor "+name);
-		}
+	@Override
+	protected void handleStart() {
+		mSensorManager.registerListener(this, mSensor, (int)(1000000*period));
+		Log.d(TAG,"Start sensor "+name);
+	}
+
+	/* (non-Javadoc)
+	 * @see uk.ac.horizon.ubihelper.channel.NamedChannel#handleStop()
+	 */
+	@Override
+	protected void handleStop() {
+		Log.d(TAG, "Stop sensor "+name);
+		mSensorManager.unregisterListener(this);
 	}
 
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -70,12 +67,6 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 		} catch (JSONException e) {
 			/* ignore */
 		}
-		addValue(value);
-		if (isExpired()) {
-			mSensorManager.unregisterListener(this);
-			active = false;
-			clearValues();
-			Log.d(TAG,"Stop on change sensor "+name);
-		}
+		onNewValue(value);
 	}
 }
