@@ -130,7 +130,7 @@ public class DnsServer extends Thread {
 				DatagramPacket p = new DatagramPacket(buf, buf.length);
 				s.receive(p);
 				//Log.d(TAG,"Received "+p.getLength()+" bytes from "+p.getAddress().getHostAddress()+":"+p.getPort());
-				logger.fine("Received "+p.getLength()+" bytes from "+p.getAddress().getHostAddress()+":"+p.getPort());
+				logger.info("Received "+p.getLength()+" bytes from "+p.getAddress().getHostAddress()+":"+p.getPort());
 				DnsProtocol pp = new DnsProtocol();
 				pp.bytes = p.getData();
 				pp.len = p.getLength();
@@ -163,7 +163,7 @@ public class DnsServer extends Thread {
 						s.send(rp);
 					}
 					else {
-						logger.info("Ignored query "+pp);
+						logger.info("Ignored query "+pp+" from "+p.getAddress().getHostAddress()+":"+p.getPort());
 					}
 				}
 			}

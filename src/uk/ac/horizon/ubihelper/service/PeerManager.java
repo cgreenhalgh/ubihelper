@@ -180,7 +180,8 @@ public class PeerManager {
 		}
 		return sis;
 	}
-	public synchronized void startSearch() {
+	/** return OK if started; false if couldn't, e.g. no wifi active */
+	public synchronized boolean startSearch() {
 		closeSearchInternal();
 		DnsProtocol.Query query = new DnsProtocol.Query();
 		query.name = DnsUtils.getServiceDiscoveryName();
@@ -189,12 +190,16 @@ public class PeerManager {
 		searchClient = new DnsClient(query, true);
 		searchClient.setOnChange(onSearchChangeListener);
 		NetworkInterface ni = getNetworkInterface();
-		if (ni!=null)
-			searchClient.setNetworkInterface(ni);
+		if (ni==null) {
+			Log.w(TAG,"Could not start Dns search - no NetworkInterface");
+			return false;
+		}
+		searchClient.setNetworkInterface(ni);
 		searchClient.start();
 		searchStarted = true;
 		Intent i = new Intent(ACTION_SEARCH_STARTED);
 		service.sendBroadcast(i);
+		return true;
 	}
 	private NetworkInterface getNetworkInterface() {
 		if (!wifi.isWifiEnabled()) {

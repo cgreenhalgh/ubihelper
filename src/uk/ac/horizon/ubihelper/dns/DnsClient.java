@@ -111,14 +111,15 @@ public class DnsClient extends Thread {
 		synchronized (this) {
 			startTime = System.currentTimeMillis();
 			try {
-				socket = new MulticastSocket();
+				socket = new MulticastSocket(); // source port 5353?!
 				socket.setLoopbackMode(disableLoopback );
-				//socket.setTimeToLive(1);
+				socket.setTimeToLive(255);
 				//socket.setSoTimeout(TIMEOUT_MS);
 				if (networkInterface!=null) {
 					logger.info("Bind client socket to "+networkInterface.getDisplayName());
 					socket.setNetworkInterface(networkInterface);
 				}
+				logger.info("TTL = "+socket.getTimeToLive());
 			}
 			catch (Exception e) {
 				errorInternal("Creating socket: "+e.getMessage());

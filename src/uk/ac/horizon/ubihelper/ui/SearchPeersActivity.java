@@ -194,7 +194,10 @@ public class SearchPeersActivity extends ListActivity {
 		else if (!resumeOnly) {
 			setHeaderText("Searching...");
 			peerInfos.clear();
-			peerManager.startSearch();
+			if (!peerManager.startSearch()) {
+				setHeaderText("Search again (sorry, no WiFi last time)");
+				return;
+			}
 		}
 	}
 	
