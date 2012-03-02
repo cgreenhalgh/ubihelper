@@ -24,6 +24,9 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
@@ -130,4 +133,27 @@ public class ManagePeersActivity extends ListActivity {
 			peersAdapter.add(new PeerWrapper(pi));
 		}
 	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		 MenuInflater inflater = getMenuInflater();
+		 inflater.inflate(R.menu.managepeersmenu, menu);
+		 return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.manualadd_option:
+		{
+			Intent i  = new Intent(this, PeerManualAddActivity.class); 
+			startActivity(i);
+			return true;
+		}
+		default:
+			return super.onOptionsItemSelected(item);
+		}
+	}
+	
+	
 }

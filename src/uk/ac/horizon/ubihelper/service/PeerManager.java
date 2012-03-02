@@ -44,6 +44,7 @@ import uk.ac.horizon.ubihelper.protocol.MessageUtils;
 import uk.ac.horizon.ubihelper.protocol.ProtocolManager;
 import uk.ac.horizon.ubihelper.protocol.ProtocolManager.ClientConnectionListener;
 import uk.ac.horizon.ubihelper.service.PeerManager.SearchInfo;
+import uk.ac.horizon.ubihelper.ui.PeerInfoActivity;
 import uk.ac.horizon.ubihelper.ui.PeerRequestActivity;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -983,5 +984,25 @@ public class PeerManager {
 			nm.cancel(ci.notificationId);
 			ci.notificationId = 0;
 		}
+	}
+	/** public API - start peer add for specified host/port. Return PeerInfoActivity intent */
+	public synchronized Intent addPeer(InetAddress host, int port) {
+		Intent i = new Intent(service, PeerInfoActivity.class);
+		i.putExtra(EXTRA_SOURCEIP, host.getHostAddress());
+		i.putExtra(EXTRA_PORT, port);
+		String name =  "Unknown (manually added)";
+		i.putExtra(EXTRA_NAME, name);
+		
+		PeerInfo pi = new PeerInfo(name, host);
+		pi.port = port;
+		pi.state = PeerState.STATE_SRV_FOUND;
+
+		peers.add(pi);
+		
+		Intent bi = new Intent(ACTION_PEERS_CHANGED);
+		service.sendBroadcast(bi);
+		updatePeer(pi);
+
+		return i;
 	}
 }

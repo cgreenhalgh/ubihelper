@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item android:id="@+id/manualadd_option" android:titleCondensed="Manual" android:visible="true" android:enabled="true" android:menuCategory="container" android:title="Manual Add"></item>
+    
+
+</menu>
