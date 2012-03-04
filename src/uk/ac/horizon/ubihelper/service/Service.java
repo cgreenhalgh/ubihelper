@@ -20,6 +20,9 @@ import uk.ac.horizon.ubihelper.channel.Subscription;
 import uk.ac.horizon.ubihelper.httpserver.HttpContinuation;
 import uk.ac.horizon.ubihelper.httpserver.HttpError;
 import uk.ac.horizon.ubihelper.httpserver.HttpListener;
+import uk.ac.horizon.ubihelper.service.channel.BluetoothDiscoveryChannel;
+import uk.ac.horizon.ubihelper.service.channel.SensorChannel;
+import uk.ac.horizon.ubihelper.service.channel.TimeChannel;
 import uk.ac.horizon.ubihelper.ui.MainPreferences;
 
 import android.app.Notification;
@@ -97,7 +100,10 @@ public class Service extends android.app.Service {
 			channelManager.addChannel(magnetic);
 			SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
 			channelManager.addChannel(accelerometer);
+			BluetoothDiscoveryChannel btchannel = new BluetoothDiscoveryChannel(this, mHandler, "bluetooth");
+			channelManager.addChannel(btchannel);
 		}
+		channelManager.addChannel(new TimeChannel(mHandler,"time"));
 		Log.d(TAG,"Create http server...");
 		
 		// http server
@@ -186,6 +192,8 @@ public class Service extends android.app.Service {
 			httpListener.close();
 		if (wifiDiscoveryManager!=null)
 			wifiDiscoveryManager.close();
+		if (channelManager!=null)
+			channelManager.close();
 	}
 
 	@Override
@@ -305,7 +313,7 @@ public class Service extends android.app.Service {
 				resp.put("values", values);
 				if (ps!=null) {
 					// should be!
-					LinkedList<JSONObject> vs = ps.getValues();
+					LinkedList<JSONObject> vs = ps.takeValues();
 					for (JSONObject v : vs)
 						values.put(v);
 				}

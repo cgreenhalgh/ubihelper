@@ -43,7 +43,9 @@ public class PullSubscription extends Subscription {
 	 * @return the values
 	 */
 	@SuppressWarnings("unchecked")
-	public synchronized LinkedList<JSONObject> getValues() {
-		return (LinkedList<JSONObject>)values.clone();
+	public synchronized LinkedList<JSONObject> takeValues() {
+		LinkedList<JSONObject> oldValues = values;
+		values = new LinkedList<JSONObject>();
+		return oldValues;
 	}
 }

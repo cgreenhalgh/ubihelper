@@ -39,6 +39,7 @@ public class NamedChannel {
 		this.active = false;
 		handleStop();
 	}
+	public synchronized void close() {}
 	public synchronized JSONObject getImmediateValue() {
 		return null;
 	}

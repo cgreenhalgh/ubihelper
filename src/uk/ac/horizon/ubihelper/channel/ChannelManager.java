@@ -27,7 +27,13 @@ public class ChannelManager implements ChannelListener {
 		channelsChannel = new SharedVariableChannel(CHANNEL_CHANNELS, getChannels());
 		addChannel(channelsChannel);
 	}
-
+	public synchronized void close() {
+		while(channels.size()>0) {
+			NamedChannel nc = channels.remove();
+			nc.stop();
+			nc.close();
+		}
+	}
 	private synchronized JSONObject getChannels() {
 		JSONObject value = new JSONObject();
 		JSONArray array = new JSONArray();
