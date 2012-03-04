@@ -4,6 +4,7 @@
 package uk.ac.horizon.ubihelper.service;
 
 import java.util.LinkedList;
+import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,6 +22,8 @@ import uk.ac.horizon.ubihelper.httpserver.HttpContinuation;
 import uk.ac.horizon.ubihelper.httpserver.HttpError;
 import uk.ac.horizon.ubihelper.httpserver.HttpListener;
 import uk.ac.horizon.ubihelper.service.channel.BluetoothDiscoveryChannel;
+import uk.ac.horizon.ubihelper.service.channel.GpsStatusChannel;
+import uk.ac.horizon.ubihelper.service.channel.LocationChannel;
 import uk.ac.horizon.ubihelper.service.channel.SensorChannel;
 import uk.ac.horizon.ubihelper.service.channel.TimeChannel;
 import uk.ac.horizon.ubihelper.service.channel.WifiScannerChannel;
@@ -105,8 +108,15 @@ public class Service extends android.app.Service {
 			channelManager.addChannel(btchannel);
 			WifiScannerChannel wifichannel = new WifiScannerChannel(this, mHandler, "wifi");
 			channelManager.addChannel(wifichannel);
+			GpsStatusChannel gpsstatus = new GpsStatusChannel("gpsstatus", this);
+			channelManager.addChannel(gpsstatus);
 		}
 		channelManager.addChannel(new TimeChannel(mHandler,"time"));
+		List<String> locationProviders = LocationChannel.getAllProviders(this);
+		for (String provider : locationProviders) {
+			LocationChannel locchannel = new LocationChannel("location."+provider, this, provider);
+			channelManager.addChannel(locchannel);
+		}
 		Log.d(TAG,"Create http server...");
 		
 		// http server
