@@ -23,6 +23,7 @@ import uk.ac.horizon.ubihelper.httpserver.HttpListener;
 import uk.ac.horizon.ubihelper.service.channel.BluetoothDiscoveryChannel;
 import uk.ac.horizon.ubihelper.service.channel.SensorChannel;
 import uk.ac.horizon.ubihelper.service.channel.TimeChannel;
+import uk.ac.horizon.ubihelper.service.channel.WifiScannerChannel;
 import uk.ac.horizon.ubihelper.ui.MainPreferences;
 
 import android.app.Notification;
@@ -102,6 +103,8 @@ public class Service extends android.app.Service {
 			channelManager.addChannel(accelerometer);
 			BluetoothDiscoveryChannel btchannel = new BluetoothDiscoveryChannel(this, mHandler, "bluetooth");
 			channelManager.addChannel(btchannel);
+			WifiScannerChannel wifichannel = new WifiScannerChannel(this, mHandler, "wifi");
+			channelManager.addChannel(wifichannel);
 		}
 		channelManager.addChannel(new TimeChannel(mHandler,"time"));
 		Log.d(TAG,"Create http server...");
