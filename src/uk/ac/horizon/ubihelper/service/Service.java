@@ -22,6 +22,8 @@ import uk.ac.horizon.ubihelper.httpserver.HttpContinuation;
 import uk.ac.horizon.ubihelper.httpserver.HttpError;
 import uk.ac.horizon.ubihelper.httpserver.HttpListener;
 import uk.ac.horizon.ubihelper.service.channel.BluetoothDiscoveryChannel;
+import uk.ac.horizon.ubihelper.service.channel.CellLocationChannel;
+import uk.ac.horizon.ubihelper.service.channel.CellStrengthChannel;
 import uk.ac.horizon.ubihelper.service.channel.GpsStatusChannel;
 import uk.ac.horizon.ubihelper.service.channel.LocationChannel;
 import uk.ac.horizon.ubihelper.service.channel.SensorChannel;
@@ -110,6 +112,12 @@ public class Service extends android.app.Service {
 			channelManager.addChannel(wifichannel);
 			GpsStatusChannel gpsstatus = new GpsStatusChannel("gpsstatus", this);
 			channelManager.addChannel(gpsstatus);
+			CellLocationChannel cellchannel = new CellLocationChannel(mHandler, this, "cell.location", false);
+			channelManager.addChannel(cellchannel);
+			CellLocationChannel cellchannel2 = new CellLocationChannel(mHandler, this, "cell.neighbors", true);
+			channelManager.addChannel(cellchannel2);
+			CellStrengthChannel cellchannel3 = new CellStrengthChannel(this, "cell.strength");
+			channelManager.addChannel(cellchannel3);
 		}
 		channelManager.addChannel(new TimeChannel(mHandler,"time"));
 		List<String> locationProviders = LocationChannel.getAllProviders(this);
