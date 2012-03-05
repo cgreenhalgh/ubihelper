@@ -106,6 +106,16 @@ public class Service extends android.app.Service {
 			channelManager.addChannel(magnetic);
 			SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
 			channelManager.addChannel(accelerometer);
+			SensorChannel gyro = new SensorChannel("gyro", this, Sensor.TYPE_GYROSCOPE);
+			channelManager.addChannel(gyro);
+			SensorChannel light = new SensorChannel("light", this, Sensor.TYPE_LIGHT);
+			channelManager.addChannel(light);
+			SensorChannel pressure = new SensorChannel("pressure", this, Sensor.TYPE_PRESSURE);
+			channelManager.addChannel(pressure);
+			SensorChannel proximity = new SensorChannel("proximity", this, Sensor.TYPE_PROXIMITY);
+			channelManager.addChannel(proximity);
+			SensorChannel temperature = new SensorChannel("temperature", this, Sensor.TYPE_TEMPERATURE);
+			channelManager.addChannel(temperature);
 			BluetoothDiscoveryChannel btchannel = new BluetoothDiscoveryChannel(this, mHandler, "bluetooth");
 			channelManager.addChannel(btchannel);
 			WifiScannerChannel wifichannel = new WifiScannerChannel(this, mHandler, "wifi");
@@ -368,5 +378,6 @@ public class Service extends android.app.Service {
 	/** public API */
 	public void unwatchChannel(BroadcastIntentSubscription subscription) {
 		channelManager.removeSubscription(subscription);
+		channelManager.refreshChannel(subscription.getChannelName());
 	}
 }

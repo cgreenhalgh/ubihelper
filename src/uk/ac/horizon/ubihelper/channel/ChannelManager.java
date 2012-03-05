@@ -118,14 +118,21 @@ public class ChannelManager implements ChannelListener {
 		String name = channel.getName();
 		JSONObject value = nve.getValue();
 		logger.info("onNewValue "+name+": "+value);
+		boolean expired = false;
 		synchronized (this) {
 			for (Subscription s : subscriptions) {
-				if (s.getChannelName().equals(name))
+				if (s.getChannelName().equals(name)) {
 					if (!s.isExpired())
 						s.addValue(value);
+					else
+						expired = true;
+				}
 			}
+			if (subscriptions.size()==0)
+				expired = true;
 		}
-		refreshChannel(channel.getName());
+		if (expired)
+			refreshChannel(channel.getName());
 	}
 	
 }

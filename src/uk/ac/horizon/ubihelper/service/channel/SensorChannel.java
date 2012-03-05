@@ -26,19 +26,27 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 	private static final String TAG = "ubihelper-sensor";
 	private SensorManager mSensorManager;
 	private Sensor mSensor;
+	private long lastValueTime;
+	private long minInterval;
 	
 	public SensorChannel(String name, Service service, int sensorType) {
 		super(name);
 		mSensorManager = (SensorManager) service.getSystemService(Context.SENSOR_SERVICE);
-		mSensor = mSensorManager.getDefaultSensor(sensorType);		
-		if (mSensor==null)
-			Log.w(TAG,"No sensor found for "+name+" (type "+sensorType+")");
+		if (mSensorManager!=null) {
+			mSensor = mSensorManager.getDefaultSensor(sensorType);		
+			if (mSensor==null)
+				Log.w(TAG,"No sensor found for "+name+" (type "+sensorType+")");
+		}
 	}
 
 	@Override
 	protected void handleStart() {
-		mSensorManager.registerListener(this, mSensor, (int)(1000000*period));
-		Log.d(TAG,"Start sensor "+name);
+		minInterval = (long)(1000*period);
+		lastValueTime = 0;
+		if (mSensor!=null) {
+			mSensorManager.registerListener(this, mSensor, (int)(1000000*period));
+			Log.d(TAG,"Start sensor "+name);
+		}
 	}
 
 	/* (non-Javadoc)
@@ -46,8 +54,10 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 	 */
 	@Override
 	protected void handleStop() {
-		Log.d(TAG, "Stop sensor "+name);
-		mSensorManager.unregisterListener(this);
+		if (mSensor!=null) {
+			Log.d(TAG, "Stop sensor "+name);
+			mSensorManager.unregisterListener(this);
+		}
 	}
 
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -55,6 +65,13 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 	}
 
 	public void onSensorChanged(SensorEvent event) {
+		long now = System.currentTimeMillis();
+		long elapsed = now-lastValueTime;
+		if (elapsed<minInterval) {
+			Log.d(TAG,"Discard sensor value "+name+", elapsed "+elapsed+"/"+minInterval);
+			return;
+		}
+		lastValueTime = now;
 		JSONObject value = new JSONObject();
 		try {
 			// event time is in nanoseconds
