@@ -206,6 +206,34 @@ public abstract class ProtocolManager {
 		getRandom(sbuf);
 		return base64Encode(sbuf);
 	}
+	public String combineSecrets(String secret1, String secret2) {
+		int len = 0;
+		if (secret1==null) {
+			if (secret2==null)
+				return null;
+			logger.warning("combineSecrets with secret1==null");
+			return secret2;
+		}
+		if (secret2==null) {
+			logger.warning("combineSecrets with secret2==null");
+			return secret1;			
+		}
+		byte bs1[] = base64Decode(secret1);
+		byte bs2[] = base64Decode(secret2);
+		len = bs1.length;
+		if (bs2.length > bs1.length) {
+			byte bt[] = bs1;
+			bs1 = bs2;
+			bs2 = bt;
+		}
+		// shorter in bs2; XOR for now!
+		for (int i=0; i<bs2.length; i++) 
+			bs1[i] = (byte)(bs1[i] ^ bs2[i]);
+
+		return base64Encode(bs1);
+	}
+
+	
 	/** called when successfully peered */
 	protected abstract boolean clientHandlePeered(ClientInfo ci);
 

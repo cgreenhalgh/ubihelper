@@ -77,7 +77,7 @@ public class PeerManualAddActivity extends Activity {
 					return;					
 				}
 				if (peerManager!=null) {
-					Intent i = peerManager.addPeer(host, port);
+					Intent i = peerManager.addPeerRequest(host, port);
 					if (i!=null) {
 						startActivity(i);
 						finish();
