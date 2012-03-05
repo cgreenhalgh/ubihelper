@@ -63,6 +63,10 @@ public abstract class ProtocolManager {
 				ClientInfo ci = (ClientInfo)pc.attachment();
 				logger.info("onMessage ClientInfo "+ci);
 				pm.clientCheckMessages(ci);
+			} else if (pc.attachment() instanceof PeerInfo) {
+				PeerInfo pi = (PeerInfo)pc.attachment();
+				logger.info("onMessage PeerInfo "+pi.id);
+				pm.checkPeerMessages(pi);
 			}
 		}
 		
@@ -125,6 +129,17 @@ public abstract class ProtocolManager {
 			logger.warning("Error handling client message: "+e);
 			e.printStackTrace();
 			removeClient(ci);
+		}
+	}
+
+	public void checkPeerMessages(PeerInfo pi) {
+		// TODO Auto-generated method stub
+		while (true) {
+			Message m = pi.pc.getMessage();
+			if (m==null)
+				return;
+			logger.info("Received message "+m);
+			// TODO
 		}
 	}
 

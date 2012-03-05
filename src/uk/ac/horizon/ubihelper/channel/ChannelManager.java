@@ -21,9 +21,13 @@ public class ChannelManager implements ChannelListener {
 	private SharedVariableChannel channelsChannel;
 	public static final String CHANNEL_CHANNELS = "channels";
 	public static final String KEY_NAMES = "names";
+	public static final String CHANNEL_PEERS = "peers";
+	public static final String KEY_PEERS = "peers";
 	private int nextSubscriptionId = 1;
+	private ChannelFactory channelFactory;
 	
-	public ChannelManager() {		
+	public ChannelManager(ChannelFactory channelFactory) {		
+		this.channelFactory = channelFactory;
 		channelsChannel = new SharedVariableChannel(CHANNEL_CHANNELS, getChannels());
 		addChannel(channelsChannel);
 	}
@@ -90,6 +94,27 @@ public class ChannelManager implements ChannelListener {
 		}
 		if (period==0) {
 			period = 1; // default?!
+		}
+		if (required) {
+			boolean found = false;
+			for (NamedChannel nc : channels) {
+				if (nc.getName().equals(name)) {
+					found = true;
+				}
+			}
+			if (!found && channelFactory!=null) {
+				try {
+					NamedChannel nc = channelFactory.createChannel(name);
+					if (nc!=null) {
+						addChannel(nc);
+						found = true;
+					}
+				}
+				catch (Exception e) {
+					logger.warning("Error creating channel "+name+": "+e);
+					e.printStackTrace();
+				}
+			}
 		}
 		for (NamedChannel nc : channels) {
 			if (nc.getName().equals(name)) {

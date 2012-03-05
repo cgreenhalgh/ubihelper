@@ -23,13 +23,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.drawable;
+import uk.ac.horizon.ubihelper.channel.NamedChannel;
 import uk.ac.horizon.ubihelper.dns.DnsClient;
 import uk.ac.horizon.ubihelper.dns.DnsProtocol;
 import uk.ac.horizon.ubihelper.dns.DnsUtils;
@@ -82,7 +86,8 @@ public class PeerManager {
 	private SQLiteDatabase database;
 	/** partial, id -> PeerInfo */
 	private HashMap<String,PeerInfo> peerInfoCache = new HashMap<String,PeerInfo>();
-
+	private java.util.Timer remoteChannelTimer;
+	
 	public static class SearchInfo {
 		public String name;
 		public InetAddress src;
@@ -114,6 +119,9 @@ public class PeerManager {
 	private static final String KEY_IMEI = "imei";
 	private static final String KEY_WIFIMAC = "wifimac";
 	private static final String KEY_BTMAC = "btmac";
+	public static final String KEY_NAME = "name";
+	public static final String KEY_PERIOD = "period";
+	public static final String KEY_TIMEOUT = "timeout";
 	
 	public PeerManager(Service service) {		
 		this.service = service;
@@ -122,6 +130,7 @@ public class PeerManager {
 
 		protocol = new MyProtocolManager();
 		peerConnectionListener = new OnPeerConnectionListener(protocol);
+		remoteChannelTimer = new Timer();
 		
 		wifi = (WifiManager)service.getSystemService(Service.WIFI_SERVICE);
 		
@@ -174,6 +183,10 @@ public class PeerManager {
 		if (database!=null) {
 			database.close();
 			database = null;
+		}
+		if (remoteChannelTimer!=null) {
+			remoteChannelTimer.cancel();
+			remoteChannelTimer = null;
 		}
 	}
 	private synchronized void closeSearchInternal() {		
@@ -599,6 +612,10 @@ public class PeerManager {
 			pi.nickname = pi.name;
 			Log.i(TAG,"Converted ClientInfo to PeerInfo");
 			
+			pi.pc = ci.pc;
+			if (pi.pc!=null)
+				pi.pc.attach(pi);
+			
 			clients.remove(ci);
 			addPeer(pi);
 //			peerCache.put(pi.id, pi);
@@ -976,6 +993,11 @@ public class PeerManager {
 		pi.id = preq.id;
 		pi.trusted = preq.state==PeerRequestState.STATE_PEERED;
 		pi.nickname = pi.name;
+		
+		pi.pc = preq.pc;
+		if (pi.pc!=null)
+			pi.pc.attach(pi);
+
 		Log.i(TAG,"Converted PeerRequestInfo to PeerInfo");
 		
 		addPeer(pi);
@@ -1140,7 +1162,7 @@ public class PeerManager {
 		PeerInfo pi = getPeer(peerInfo.id);
 		pi.enabled = peerInfo.enabled;
 		PeersOpenHelper.updatePeerInfo(database, pi);
-		peerInfoCache.put(pi.id, pi);
+		//NO peerInfoCache.put(pi.id, pi);
 		
 		Log.d(TAG,"setPeerEnabled id="+peerInfo.id+" -> "+isChecked);
 		
@@ -1155,5 +1177,119 @@ public class PeerManager {
 		//Log.d(TAG,"sendBroadcast (peer state)...");
 		service.sendBroadcast(i);
 		//Log.d(TAG,"sendBroadcast done");
+	}
+	private class RemoteChannel extends NamedChannel {
+		String peerId;
+		String peerChannelName;
+		public RemoteChannel(String peerId, String peerChannelName) {
+			super("/"+peerId+"/"+peerChannelName);
+			this.peerId = peerId;
+			this.peerChannelName = peerChannelName;
+		}
+		@Override
+		public synchronized void close() {
+			// TODO Auto-generated method stub
+			super.close();
+		}
+		@Override
+		public synchronized JSONObject getImmediateValue() {
+			// TODO Auto-generated method stub
+			return super.getImmediateValue();
+		}
+		@Override
+		protected void handleStart() {
+			super.handleStart();
+			PeerInfo pi = getPeer(peerId);
+			if (pi==null) {
+				Log.d(TAG,"No peer "+peerId+" in handleStart for "+peerChannelName);
+				return;
+			}
+			if (pi.pc==null) {
+				Log.d(TAG,"No PeerConnection for "+peerId+" in handleStart for "+peerChannelName);
+				return;
+			}
+			// send initial get
+			JSONObject req = getRequest();
+			JSONArray reqs = new JSONArray();
+			reqs.put(req);
+			Log.d(TAG,"Send initial request for "+name);
+			pi.pc.sendMessage(new Message(Message.Type.REQUEST, "GET /ubihelper", null, reqs.toString()));
+			checkRemoteRequestTask(peerId);
+		}
+		@Override
+		protected void handleStop() {
+			super.handleStop();
+			// TODO send end of get?			
+			checkRemoteRequestTask(peerId);
+		}		
+		JSONObject getRequest() {
+			JSONObject req = new JSONObject();
+			try {
+				req.put(KEY_NAME, name);
+				req.put(KEY_PERIOD, this.period);
+				req.put(KEY_TIMEOUT, DEFAULT_REMOTE_REQUEST_PERIOD*2);
+			} catch (JSONException e) {
+				// shouldn't
+			}
+			return req;
+		}
+		boolean isActive() { 
+			return active;
+		}
+	}
+	private class RemoteRequestTask extends TimerTask {
+		private String peerId;
+		RemoteRequestTask(String peerId) {
+			this.peerId = peerId;
+		}
+		@Override
+		public void run() {
+			JSONArray reqs = new JSONArray();
+			synchronized (PeerManager.this) {
+				for (RemoteChannel rc : remoteChannels) {
+					if (peerId.equals(rc.peerId) && rc.isActive())
+						reqs.put(rc.getRequest());
+				}
+			}
+			PeerInfo pi = getPeer(peerId);
+			if (pi==null) {
+				Log.d(TAG,"No peer "+peerId+" in RemoteRequestTask");
+				return;
+			}
+			if (pi.pc==null) {
+				Log.d(TAG,"No PeerConnection for "+peerId+" in RemoteRequestTask");
+				return;
+			}
+			// send repeat get
+			Log.d(TAG,"Send repeat request to "+peerId+": "+reqs.toString());
+			pi.pc.sendMessage(new Message(Message.Type.REQUEST, "GET /ubihelper", null, reqs.toString()));
+		}
+	};
+	private static final long DEFAULT_REMOTE_REQUEST_PERIOD = 10000;
+	private HashMap<String,RemoteRequestTask> remoteRequestTasks = new HashMap<String,RemoteRequestTask>();
+	private LinkedList<RemoteChannel> remoteChannels = new LinkedList<RemoteChannel>();
+	private synchronized void checkRemoteRequestTask(String peerId) {
+		boolean active= false;
+		for (RemoteChannel rc : remoteChannels) {
+			if (rc.peerId.equals(peerId) && rc.isActive()) {
+				active = true;
+				break;
+			}
+		}
+		RemoteRequestTask remoteRequestTask = remoteRequestTasks.get(peerId);
+		if (active && remoteRequestTask==null) {
+			remoteRequestTask = new RemoteRequestTask(peerId);
+			remoteRequestTasks.put(peerId, remoteRequestTask);
+			remoteChannelTimer.scheduleAtFixedRate(remoteRequestTask, DEFAULT_REMOTE_REQUEST_PERIOD, DEFAULT_REMOTE_REQUEST_PERIOD);
+		}
+		else if (!active && remoteRequestTask!=null) {
+			remoteRequestTask.cancel();
+			remoteRequestTasks.remove(peerId);
+		}
+	}
+	public synchronized NamedChannel getRemoteChannel(String peerId, String peerChannelName) {
+		RemoteChannel rc = new RemoteChannel(peerId, peerChannelName);
+		remoteChannels.add(rc);
+		return rc;
 	}
 }

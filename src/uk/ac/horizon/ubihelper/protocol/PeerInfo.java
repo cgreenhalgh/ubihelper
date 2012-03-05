@@ -50,7 +50,7 @@ public class PeerInfo {
 	public long portTimestamp;
 
 	// connect
-	PeerConnection pc;
+	public PeerConnection pc;
 
 	// debug
 	public String detail;

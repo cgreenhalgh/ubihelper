@@ -24,22 +24,15 @@ import android.widget.AdapterView.OnItemClickListener;
  * @author cmg
  *
  */
-public class ChannelListActivity extends ChannelViewActivity {
+public class ChannelPeerListActivity extends ChannelViewActivity {
 	private ListView listView;
 	private ArrayAdapter<String> listAdapter;
 	
-	public static Intent getStartActivityIntent(Context context) {
-		Intent i = new Intent(context, ChannelListActivity.class);
-		i.putExtra(BroadcastIntentSubscription.EXTRA_NAME, ChannelManager.CHANNEL_CHANNELS);
-		return i;
-	}
-	public static Intent getStartActivityIntent(
-			Context context, String name) {
-		Intent i = new Intent(context, ChannelListActivity.class);
+	public static Intent getStartActivityIntent(Context context, String name) {
+		Intent i = new Intent(context, ChannelPeerListActivity.class);
 		i.putExtra(BroadcastIntentSubscription.EXTRA_NAME, name);
 		return i;
 	}
-
 	
 	
 	/* (non-Javadoc)
@@ -48,27 +41,24 @@ public class ChannelListActivity extends ChannelViewActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setTitle(getIntent().getExtras().getString(BroadcastIntentSubscription.EXTRA_NAME));
 		setContentView(R.layout.channel_list);
 		listView = (ListView)findViewById(R.id.channel_list);
-		listAdapter = new ArrayAdapter<String>(this, R.layout.channel_list_item);
+		listAdapter = new ArrayAdapter<String>(this, R.layout.channel_peer_list_item);
 		listView.setAdapter(listAdapter);
 		
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				if (position>=0 && position<=listAdapter.getCount()) {
-					String name = listAdapter.getItem(position);
-					if (name.equals("peers") || name.endsWith("/peers")) {
-						Intent i = ChannelPeerListActivity.getStartActivityIntent(ChannelListActivity.this, name);
-						startActivity(i);						
-					}
-					else if (name.equals("channels") || name.endsWith("/channels")) {
-						Intent i = ChannelListActivity.getStartActivityIntent(ChannelListActivity.this, name);
-						startActivity(i);												
-					}
-					else {
-						Intent i = ChannelValueActivity.getStartActivityIntent(ChannelListActivity.this, name);
+					String peer = listAdapter.getItem(position);
+					try {
+						JSONObject p = new JSONObject(peer);
+						String peerId = p.getString("id");
+						String name = "/"+peerId+"/"+ChannelManager.CHANNEL_CHANNELS;
+						Intent i = ChannelListActivity.getStartActivityIntent(ChannelPeerListActivity.this, name);
 						startActivity(i);
+					}
+					catch (Exception e) {
+						Log.w(TAG,"Error parsing peer "+peer+": "+e);
 					}
 				}
 			}			
@@ -83,15 +73,14 @@ public class ChannelListActivity extends ChannelViewActivity {
 			if (value!=null) {
 				try {
 					JSONObject val = new JSONObject(value);
-					JSONArray names = val.getJSONArray(ChannelManager.KEY_NAMES);
-					for (int i=0; i<names.length(); i++) 
-						listAdapter.add(names.getString(i));
+					JSONArray peers = val.getJSONArray(ChannelManager.KEY_PEERS);
+					for (int i=0; i<peers.length(); i++) 
+						listAdapter.add(peers.getJSONObject(i).toString());
 				} catch (JSONException e) {
 					Log.w(TAG,"Parsing channels value "+value+": "+e);
 				}
 			}
 		}
 	}
-
 
 }

@@ -15,6 +15,7 @@ import org.json.JSONTokener;
 import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.drawable;
 import uk.ac.horizon.ubihelper.R.string;
+import uk.ac.horizon.ubihelper.channel.ChannelFactory;
 import uk.ac.horizon.ubihelper.channel.ChannelManager;
 import uk.ac.horizon.ubihelper.channel.NamedChannel;
 import uk.ac.horizon.ubihelper.channel.PullSubscription;
@@ -74,7 +75,7 @@ public class Service extends android.app.Service {
 	private TelephonyManager telephony;
 	private String imei;
 	private ChannelManager channelManager;
-	
+
 	@Override
 	public void onCreate() {
 		// One-time set-up...
@@ -100,7 +101,7 @@ public class Service extends android.app.Service {
 
 		startForeground(RUNNING_ID, notification);	
 		
-		channelManager = new ChannelManager();
+		channelManager = new ChannelManager(peerChannelFactory);
 		// sensors
 		if (!isEmulator()) {
 			Log.d(TAG,"Create sensor channels...");
@@ -247,14 +248,22 @@ public class Service extends android.app.Service {
 		// tidy up notification
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancel(RUNNING_ID);	
-		if (peerManager!=null)
+		if (peerManager!=null) {
 			peerManager.close();
-		if (httpListener!=null)
+			peerManager = null;
+		}
+		if (httpListener!=null) {
 			httpListener.close();
-		if (wifiDiscoveryManager!=null)
+			httpListener = null;
+		}
+		if (wifiDiscoveryManager!=null) {
 			wifiDiscoveryManager.close();
-		if (channelManager!=null)
+			wifiDiscoveryManager = null;
+		}
+		if (channelManager!=null) {
 			channelManager.close();
+			channelManager = null;
+		}
 	}
 
 	@Override
@@ -410,4 +419,20 @@ public class Service extends android.app.Service {
 		channelManager.removeSubscription(subscription);
 		channelManager.refreshChannel(subscription.getChannelName());
 	}
+	private ChannelFactory peerChannelFactory = new ChannelFactory() {
+		
+		public NamedChannel createChannel(String name) {
+			// create channel - should be peer channel?!
+			Log.d(TAG,"createChannel "+name);
+			if (!name.startsWith("/"))
+				return null;
+			int ix = name.indexOf("/", 1);
+			if (ix<1)
+				return null;
+			String id = name.substring(1,ix);
+			
+			return peerManager.getRemoteChannel(id, name.substring(ix+1));
+		}
+	};
+	
 }

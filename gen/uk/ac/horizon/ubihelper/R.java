@@ -63,16 +63,17 @@ public final class R {
         public static final int add_peer_item=0x7f030000;
         public static final int channel_list=0x7f030001;
         public static final int channel_list_item=0x7f030002;
-        public static final int channel_value=0x7f030003;
-        public static final int main=0x7f030004;
-        public static final int peer_info=0x7f030005;
-        public static final int peer_item=0x7f030006;
-        public static final int peer_manual_add=0x7f030007;
-        public static final int peer_request=0x7f030008;
-        public static final int peer_request_info=0x7f030009;
-        public static final int search_peer_item=0x7f03000a;
-        public static final int search_peers=0x7f03000b;
-        public static final int wifistatus=0x7f03000c;
+        public static final int channel_peer_list_item=0x7f030003;
+        public static final int channel_value=0x7f030004;
+        public static final int main=0x7f030005;
+        public static final int peer_info=0x7f030006;
+        public static final int peer_item=0x7f030007;
+        public static final int peer_manual_add=0x7f030008;
+        public static final int peer_request=0x7f030009;
+        public static final int peer_request_info=0x7f03000a;
+        public static final int search_peer_item=0x7f03000b;
+        public static final int search_peers=0x7f03000c;
+        public static final int wifistatus=0x7f03000d;
     }
     public static final class menu {
         public static final int mainpreferencesmenu=0x7f070000;
@@ -99,8 +100,9 @@ public final class R {
         public static final int wifistatus_option_title=0x7f050010;
     }
     public static final class style {
+        public static final int list_item_description=0x7f060001;
         public static final int list_item_title=0x7f060000;
-        public static final int list_small_header=0x7f060001;
+        public static final int list_small_header=0x7f060002;
     }
     public static final class xml {
         public static final int mainpreferences=0x7f040000;

@@ -6,6 +6,12 @@
 		<item name="android:paddingBottom">12dp</item>
     </style>
     
+    <style name="list_item_description" parent="@android:style/TextAppearance.Large">
+        <item name="android:textSize">14dp</item>
+        <item name="android:paddingTop">6dp</item>
+		<item name="android:paddingBottom">6dp</item>
+    </style>
+    
     <style name="list_small_header" parent="@android:style/TextAppearance.Large">
         <item name="android:textSize">18dp</item>
     </style>
