@@ -3,6 +3,7 @@
  */
 package uk.ac.horizon.ubihelper.service;
 
+import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -39,6 +40,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
@@ -102,6 +104,7 @@ public class Service extends android.app.Service {
 		// sensors
 		if (!isEmulator()) {
 			Log.d(TAG,"Create sensor channels...");
+
 			SensorChannel magnetic = new SensorChannel("magnetic", this, Sensor.TYPE_MAGNETIC_FIELD);
 			channelManager.addChannel(magnetic);
 			SensorChannel accelerometer = new SensorChannel("accelerometer", this, Sensor.TYPE_ACCELEROMETER);
@@ -116,6 +119,31 @@ public class Service extends android.app.Service {
 			channelManager.addChannel(proximity);
 			SensorChannel temperature = new SensorChannel("temperature", this, Sensor.TYPE_TEMPERATURE);
 			channelManager.addChannel(temperature);
+
+			try {
+				Field f = Sensor.class.getField("TYPE_AMBIENT_TEMPERATURE");
+				SensorChannel sc = new SensorChannel("ambientTemperature", this, f.getInt(null));
+				channelManager.addChannel(sc);
+			} catch (Exception e) {
+				Log.d(TAG, "Could not get field Sensor.TYPE_AMBIENT_TEMPERATURE");
+			}
+			try {
+				Field f = Sensor.class.getField("TYPE_RELATIVE_HUMIDITY");
+				SensorChannel sc = new SensorChannel("relativeHumidity", this, f.getInt(null));
+				channelManager.addChannel(sc);
+			} catch (Exception e) {
+				Log.d(TAG, "Could not get field Sensor.TYPE_AMBIENT_TEMPERATURE");
+			}
+
+			// all sensors by full name
+			SensorManager sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+			if (sensorManager!=null) {
+				List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_ALL);
+				for (Sensor sensor : sensors) {
+					SensorChannel sc = new SensorChannel("sensor."+sensor.getName(), this, sensor);
+					channelManager.addChannel(sc);
+				}
+			}
 			BluetoothDiscoveryChannel btchannel = new BluetoothDiscoveryChannel(this, mHandler, "bluetooth");
 			channelManager.addChannel(btchannel);
 			WifiScannerChannel wifichannel = new WifiScannerChannel(this, mHandler, "wifi");

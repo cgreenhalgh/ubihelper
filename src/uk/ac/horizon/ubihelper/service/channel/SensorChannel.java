@@ -28,6 +28,12 @@ public class SensorChannel extends NamedChannel implements SensorEventListener {
 	private Sensor mSensor;
 	private long lastValueTime;
 	private long minInterval;
+
+	public SensorChannel(String name, Service service, Sensor sensor) {
+		super(name);
+		mSensorManager = (SensorManager) service.getSystemService(Context.SENSOR_SERVICE);
+		mSensor = sensor;
+	}
 	
 	public SensorChannel(String name, Service service, int sensorType) {
 		super(name);
