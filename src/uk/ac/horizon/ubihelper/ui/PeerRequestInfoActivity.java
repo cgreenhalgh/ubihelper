@@ -8,8 +8,8 @@ import uk.ac.horizon.ubihelper.R.id;
 import uk.ac.horizon.ubihelper.R.layout;
 import uk.ac.horizon.ubihelper.service.PeerManager;
 import uk.ac.horizon.ubihelper.service.Service;
-import uk.ac.horizon.ubihelper.service.PeerManager.PeerInfo;
-import uk.ac.horizon.ubihelper.service.PeerManager.PeerState;
+import uk.ac.horizon.ubihelper.service.PeerManager.PeerRequestInfo;
+import uk.ac.horizon.ubihelper.service.PeerManager.PeerRequestState;
 import uk.ac.horizon.ubihelper.service.PeerManager.SearchInfo;
 import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 import android.app.Activity;
@@ -28,22 +28,22 @@ import android.widget.TextView;
  * @author cmg
  *
  */
-public class PeerInfoActivity extends Activity {
+public class PeerRequestInfoActivity extends Activity {
 	static final String TAG = "ubihelper-peerinfo";
 	
 	private PeerManager peerManager;
-	private PeerManager.PeerInfo peerInfo;
+	private PeerManager.PeerRequestInfo peerInfo;
 	private TextView peerInfoName, peerInfoSourceip, peerInfoState, peerInfoPort, peerInfoDetail;
 	
 	public static Intent getStartActivityIntent(Context context, PeerManager.SearchInfo si) {
-		Intent i = new Intent(context, PeerInfoActivity.class);
+		Intent i = new Intent(context, PeerRequestInfoActivity.class);
 		i.putExtra(PeerManager.EXTRA_NAME, si.name);
 		i.putExtra(PeerManager.EXTRA_SOURCEIP, si.src.getHostAddress());
 		return i;
 	}
-	public static Intent getStartActivityIntent(ManagePeersActivity context,
-			PeerInfo pi) {
-		Intent i = new Intent(context, PeerInfoActivity.class);
+	public static Intent getStartActivityIntent(Context context,
+			PeerRequestInfo pi) {
+		Intent i = new Intent(context, PeerRequestInfoActivity.class);
 		i.putExtra(PeerManager.EXTRA_NAME, pi.instanceName);
 		i.putExtra(PeerManager.EXTRA_SOURCEIP, pi.src.getHostAddress());
 		return i;
@@ -92,7 +92,7 @@ public class PeerInfoActivity extends Activity {
 			}
 			else if (intent!=null) {
 				try {
-					String state = PeerManager.PeerState.values()[intent.getExtras().getInt(PeerManager.EXTRA_PEER_STATE)].name();
+					String state = PeerManager.PeerRequestState.values()[intent.getExtras().getInt(PeerManager.EXTRA_PEER_STATE)].name();
 					peerInfoState.setText(state+" (deleted)");
 				}
 				catch (Exception e) {
@@ -138,7 +138,7 @@ public class PeerInfoActivity extends Activity {
 	protected void onStart() {
 		super.onStart();
 		Intent i = new Intent(this, Service.class);
-		IntentFilter peerChangeFilter = new IntentFilter(PeerManager.ACTION_PEER_STATE_CHANGED);
+		IntentFilter peerChangeFilter = new IntentFilter(PeerManager.ACTION_PEER_REQUEST_STATE_CHANGED);
 		registerReceiver(peerChangeListener, peerChangeFilter);
 		bindService(i, mServiceConnection, 0);
 	}

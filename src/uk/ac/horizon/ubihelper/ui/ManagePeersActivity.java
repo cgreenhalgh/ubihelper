@@ -10,7 +10,7 @@ import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.layout;
 import uk.ac.horizon.ubihelper.service.PeerManager;
 import uk.ac.horizon.ubihelper.service.Service;
-import uk.ac.horizon.ubihelper.service.PeerManager.PeerInfo;
+import uk.ac.horizon.ubihelper.service.PeerManager.PeerRequestInfo;
 import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
 
 import android.app.Activity;
@@ -56,7 +56,7 @@ public class ManagePeersActivity extends ListActivity {
 		ListView lv = getListView();
 		// following line fails with addView not supported in AdapterView
 		searchView = getLayoutInflater().inflate(R.layout.add_peer_item, null);
-		lv.addHeaderView(searchView, "Add a new item", true);
+		lv.addHeaderView(searchView, "Add a new peer", true);
 		lv.setAdapter(peersAdapter);
 		
 		lv.setOnItemClickListener(new OnItemClickListener() {
@@ -67,9 +67,9 @@ public class ManagePeersActivity extends ListActivity {
 				}
 				else {
 					if (position>=1 && position<=peersAdapter.getCount()) {
-						PeerManager.PeerInfo pi = peersAdapter.getItem(position-1).peerInfo;
-						Intent i = PeerInfoActivity.getStartActivityIntent(ManagePeersActivity.this, pi);
-						startActivity(i);
+//						PeerManager.PeerRequestInfo pi = peersAdapter.getItem(position-1).peerInfo;
+//						Intent i = PeerRequestInfoActivity.getStartActivityIntent(ManagePeersActivity.this, pi);
+//						startActivity(i);
 					}
 				}
 			}			
@@ -79,7 +79,7 @@ public class ManagePeersActivity extends ListActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		registerReceiver(peersChangedReceiver, new IntentFilter(PeerManager.ACTION_PEERS_CHANGED));
+//		registerReceiver(peersChangedReceiver, new IntentFilter(PeerManager.ACTION_PEER_REQUESTS_CHANGED));
 		Intent i = new Intent(this, Service.class);
 		bindService(i, mServiceConnection, 0);
 	}
@@ -88,7 +88,7 @@ public class ManagePeersActivity extends ListActivity {
 	protected void onStop() {
 		super.onStop();
 		unbindService(mServiceConnection);
-		unregisterReceiver(peersChangedReceiver);
+//		unregisterReceiver(peersChangedReceiver);
 	}
 
 	/** monitor binding to service (used for preference update push) */
@@ -115,45 +115,23 @@ public class ManagePeersActivity extends ListActivity {
 	};	
 	
 	private static class PeerWrapper {
-		private PeerManager.PeerInfo peerInfo;
-		PeerWrapper(PeerManager.PeerInfo peerInfo) {
-			this.peerInfo = peerInfo;
-		}
-		public String toString() {
-			return peerInfo.instanceName;
-		}
+//		private PeerManager.PeerRequestInfo peerInfo;
+//		PeerWrapper(PeerManager.PeerRequestInfo peerInfo) {
+//			this.peerInfo = peerInfo;
+//		}
+//		public String toString() {
+//			return peerInfo.instanceName;
+//		}
 	}
 	protected void refresh() {
 		// TODO Auto-generated method stub
 		if (peerManager==null)
 			return;
 		peersAdapter.clear();		
-		List<PeerManager.PeerInfo> peers = peerManager.getPeers();
-		for (PeerManager.PeerInfo pi : peers) {
-			peersAdapter.add(new PeerWrapper(pi));
-		}
+//		List<PeerManager.PeerRequestInfo> peers = peerManager.getPeerRequests();
+//		for (PeerManager.PeerRequestInfo pi : peers) {
+//			peersAdapter.add(new PeerWrapper(pi));
+//		}
 	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		 MenuInflater inflater = getMenuInflater();
-		 inflater.inflate(R.menu.managepeersmenu, menu);
-		 return true;
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-		case R.id.manualadd_option:
-		{
-			Intent i  = new Intent(this, PeerManualAddActivity.class); 
-			startActivity(i);
-			return true;
-		}
-		default:
-			return super.onOptionsItemSelected(item);
-		}
-	}
-	
 	
 }

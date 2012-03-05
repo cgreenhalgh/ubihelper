@@ -23,28 +23,42 @@ public class PeersOpenHelper extends SQLiteOpenHelper {
 
 	static final String KEY_NICKNAME = "nickname";
 	static final String KEY_NAME = "name";
+	static final String KEY_INFO = "info";
 	static final String KEY_WIFIMAC = "wifimac";
 	static final String KEY_BTMAC = "btmac";
 	static final String KEY_IMEI = "imei";
+	static final String KEY_ID = "id";
+	static final String KEY_SECRET = "secret";
+	static final String KEY_CREATED_TIMESTAMP = "created_timestamp";
+	static final String KEY_IP_TIMESTAMP = "ip_timestamp";
 	static final String KEY_IP = "ip";
+	static final String KEY_PORT = "port";
+	static final String KEY_PORT_TIMESTAMP = "port_timestamp";
 	//static final String KEY_GROUPNAME = "groupname";
-	static final String KEY_ID = BaseColumns._ID;
-	//static final String KEY_META = "meta";
+	static final String KEY_ROW_ID = BaseColumns._ID;
 	static final String KEY_TRUSTED = "trusted";
+	static final String KEY_ENABLED = "enabled";
 	//static final String KEY_GROUPID = "groupid";
 	//static final String KEY_PEERID = "groupid";
 	
 	private static final String PEER_TABLE_CREATE =
 			"CREATE TABLE " + PEER_TABLE_NAME + " (" +
-					KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+					KEY_ROW_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
 					KEY_NICKNAME + " TEXT, "+
+					KEY_ID + " TEXT, "+
 					KEY_NAME + " TEXT, "+
+					KEY_INFO + " TEXT, "+
 					KEY_WIFIMAC + " TEXT, "+
 					KEY_BTMAC + " TEXT, "+
-					KEY_IP + " TEXT, "+
 					KEY_IMEI + " TEXT, "+
-					//KEY_META + " TEXT, "+
-					KEY_TRUSTED + " INTEGER);";
+					KEY_SECRET + " TEXT, "+
+					KEY_CREATED_TIMESTAMP + " INTEGER, "+
+					KEY_IP + " TEXT, "+
+					KEY_IP_TIMESTAMP + " INTEGER, "+
+					KEY_PORT + " INTEGER, "+
+					KEY_PORT_TIMESTAMP + " INTEGER, "+
+					KEY_TRUSTED + " INTEGER, "+
+					KEY_ENABLED + " INTEGER);";
 //	private static final String GROUP_TABLE_CREATE =
 //			"CREATE TABLE " + GROUP_TABLE_NAME + " (" +
 //					KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +

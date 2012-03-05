@@ -55,7 +55,7 @@
         </activity>
         <activity android:name=".ui.ManagePeersActivity" android:enabled="true"></activity>
         <activity android:name=".ui.SearchPeersActivity" android:enabled="true"></activity>
-        <activity android:enabled="true" android:name=".ui.PeerInfoActivity"></activity>
+        <activity android:enabled="true" android:name=".ui.PeerRequestInfoActivity"></activity>
         <activity android:name=".ui.PeerRequestActivity" android:enabled="true"></activity>
         <activity android:enabled="true" android:name=".ui.PeerManualAddActivity"></activity>
         <activity android:enabled="true" android:name=".ui.ChannelValueActivity"></activity>

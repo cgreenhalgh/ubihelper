@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+     >  -->
+<LinearLayout  xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" 
+	android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:id="@+id/search_peers_parent"
+    >
+    
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Peer Requests"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
+    
+	<ListView 
+	    android:id="@+id/peer_request_list"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"    
+	    >
+	    
+	</ListView>
+
+	<TextView
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:text="Discovered Peers"
+	    android:textAppearance="?android:attr/textAppearanceMedium" />
+
+	<ListView 
+	    android:id="@+id/peer_search_list"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"    
+	    >
+	    
+	</ListView>
+
+	
+</LinearLayout>
+<!--   </ScrollView> -->

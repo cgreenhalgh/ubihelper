@@ -44,7 +44,7 @@ import uk.ac.horizon.ubihelper.protocol.MessageUtils;
 import uk.ac.horizon.ubihelper.protocol.ProtocolManager;
 import uk.ac.horizon.ubihelper.protocol.ProtocolManager.ClientConnectionListener;
 import uk.ac.horizon.ubihelper.service.PeerManager.SearchInfo;
-import uk.ac.horizon.ubihelper.ui.PeerInfoActivity;
+import uk.ac.horizon.ubihelper.ui.PeerRequestInfoActivity;
 import uk.ac.horizon.ubihelper.ui.PeerRequestActivity;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -91,14 +91,14 @@ public class PeerManager {
 	/** Broadcast, has extra NAME & SOURCEIP */
 	public static final String ACTION_PEER_DISCOVERED = "uk.ac.horizon.ubihelper.action.PEER_DISCOVERED";
 	/** Broadcast, has extra NAME, SOURCEIP, PEER_STATE & (optionally) PORT */
-	public static final String ACTION_PEER_STATE_CHANGED = "uk.ac.horizon.ubihelper.action.PEER_STATE_CHANGED";
+	public static final String ACTION_PEER_REQUEST_STATE_CHANGED = "uk.ac.horizon.ubihelper.action.PEER_REQUEST_STATE_CHANGED";
 	public static final String EXTRA_NAME = "uk.ac.horizon.ubihelper.extra.NAME";
 	public static final String EXTRA_SOURCEIP = "uk.ac.horizon.ubihelper.extra.SOURCEIP";
 	public static final String EXTRA_PORT = "uk.ac.horizon.ubihelper.extra.PORT";
 	public static final String EXTRA_PEER_STATE = "uk.ac.horizon.ubihelper.extra.PEER_STATE";
 	public static final String EXTRA_DETAIL = "uk.ac.horizon.ubihelper.extra.DETAIL";
 	public static final String EXTRA_ID = "uk.ac.horizon.ubihelper.extra.ID";
-	public static final String ACTION_PEERS_CHANGED = "uk.ac.horizon.ubihelper.action.PEERS_CHANGED";
+	public static final String ACTION_PEER_REQUESTS_CHANGED = "uk.ac.horizon.ubihelper.action.PEER_REQUESTS_CHANGED";
 	private static final long MAX_QUERY_AGE = 15000;
 	
 	/** info keys */
@@ -279,7 +279,7 @@ public class PeerManager {
 		return null;
 	}
 	/** peer state */
-	public static enum PeerState {
+	public static enum PeerRequestState {
 		STATE_SEARCHED_ADD,
 		STATE_SRV_DISCOVERY,
 		STATE_SRV_DISCOVERY_FAILED,
@@ -294,9 +294,9 @@ public class PeerManager {
 		STATE_PEERED_UNTRUSTED
 	}
 	/** peer info */
-	public static class PeerInfo implements Cloneable {
+	public static class PeerRequestInfo implements Cloneable {
 		public int _id = -1;
-		public PeerState state;
+		public PeerRequestState state;
 		// Search
 		public String instanceName;
 		public InetAddress src;
@@ -316,12 +316,12 @@ public class PeerManager {
 		// debug
 		public String detail;
 		
-		PeerInfo(String instanceName, InetAddress src) {
+		PeerRequestInfo(String instanceName, InetAddress src) {
 			this.instanceName = instanceName;
 			this.src = src;
-			state = PeerState.STATE_SEARCHED_ADD;
+			state = PeerRequestState.STATE_SEARCHED_ADD;
 		}		
-		PeerInfo(PeerInfo pi) {
+		PeerRequestInfo(PeerRequestInfo pi) {
 			id = pi.id;
 			state = pi.state;
 			instanceName = pi.instanceName;
@@ -329,15 +329,15 @@ public class PeerManager {
 			port = pi.port;
 			detail = pi.detail;
 		}
-		public PeerInfo(ClientInfo ci) {
+		public PeerRequestInfo(ClientInfo ci) {
 			id = ci.id;
 			instanceName = ci.name;
 			pc = ci.pc;
 			port = ci.port;
 		}
 	}
-	private void broadcastPeerState(PeerInfo pi) {
-		Intent i = new Intent(ACTION_PEER_STATE_CHANGED);
+	private void broadcastPeerState(PeerRequestInfo pi) {
+		Intent i = new Intent(ACTION_PEER_REQUEST_STATE_CHANGED);
 		i.putExtra(EXTRA_PEER_STATE, pi.state.ordinal());
 		i.putExtra(EXTRA_NAME, pi.instanceName);
 		if (pi.detail!=null)
@@ -349,28 +349,28 @@ public class PeerManager {
 		service.sendBroadcast(i);
 		//Log.d(TAG,"sendBroadcast done");
 	}
-	private ArrayList<PeerInfo> peers = new ArrayList<PeerInfo>();
+	private ArrayList<PeerRequestInfo> peers = new ArrayList<PeerRequestInfo>();
 
 	/** public API - list peers */
-	public synchronized List<PeerInfo> getPeers() {
-		ArrayList<PeerInfo> rpeers = new ArrayList<PeerInfo>();
-		for (PeerInfo pi : peers) {
-			rpeers.add(new PeerInfo(pi));
+	public synchronized List<PeerRequestInfo> getPeerRequests() {
+		ArrayList<PeerRequestInfo> rpeers = new ArrayList<PeerRequestInfo>();
+		for (PeerRequestInfo pi : peers) {
+			rpeers.add(new PeerRequestInfo(pi));
 		}
 		return rpeers;
 	}
 	/** public API - get info on peer */
-	public synchronized PeerInfo getPeer(Intent i) {
+	public synchronized PeerRequestInfo getPeer(Intent i) {
 		String sourceip = i.getExtras().getString(EXTRA_SOURCEIP);
 		String name = i.getExtras().getString(EXTRA_NAME);
-		for (PeerInfo pi : peers) {
+		for (PeerRequestInfo pi : peers) {
 			if (pi.instanceName.equals(name) && pi.src.getHostAddress().equals(sourceip))
 				return pi;
 		}
 		return null;
 	}
 	/** public API - matches */
-	public static synchronized boolean matches(PeerInfo pi, Intent i) {
+	public static synchronized boolean matches(PeerRequestInfo pi, Intent i) {
 		String sourceip = i.getExtras().getString(EXTRA_SOURCEIP);
 		String name = i.getExtras().getString(EXTRA_NAME);
 		if (pi.instanceName.equals(name) && pi.src.getHostAddress().equals(sourceip))
@@ -378,7 +378,7 @@ public class PeerManager {
 		return false;
 	}
 	/** public API - matches */
-	public static synchronized boolean matches(PeerInfo pi, SearchInfo si) {
+	public static synchronized boolean matches(PeerRequestInfo pi, SearchInfo si) {
 		if (pi.instanceName.equals(si.name) && pi.src.equals(si.src))
 			return true;
 		return false;
@@ -386,19 +386,19 @@ public class PeerManager {
 	/** public API - start adding a discovered peer */
 	public synchronized void addPeer(SearchInfo peerInfo) {
 		// already in progress?
-		for (PeerInfo pi : peers) {
+		for (PeerRequestInfo pi : peers) {
 			if (matches(pi, peerInfo)) {
 				// kick?
 				return;
 			}
 		}
-		PeerInfo pi = new PeerInfo(peerInfo.name, peerInfo.src);
+		PeerRequestInfo pi = new PeerRequestInfo(peerInfo.name, peerInfo.src);
 		peers.add(pi);
-		Intent i = new Intent(ACTION_PEERS_CHANGED);
+		Intent i = new Intent(ACTION_PEER_REQUESTS_CHANGED);
 		service.sendBroadcast(i);
 		updatePeer(pi);
 	}
-	private synchronized void updatePeer(PeerInfo pi) {
+	private synchronized void updatePeer(PeerRequestInfo pi) {
 		switch(pi.state) {
 		case STATE_SEARCHED_ADD:
 			startSrvDiscovery(pi);
@@ -423,8 +423,8 @@ public class PeerManager {
 		}
 
 		public void onRecvMessage(PeerConnection pc) {
-			if (pc.attachment() instanceof PeerInfo) {
-				PeerInfo pi = (PeerInfo)pc.attachment();
+			if (pc.attachment() instanceof PeerRequestInfo) {
+				PeerRequestInfo pi = (PeerRequestInfo)pc.attachment();
 				Log.d(TAG,"onMessage PeerInfo "+pi);
 				checkMessages(pi);
 			}
@@ -433,10 +433,10 @@ public class PeerManager {
 		
 		public void onFail(PeerConnection pc, boolean sendFailed,
 				boolean recvFailed, boolean connectFailed) {
-			if (pc.attachment() instanceof PeerInfo) {
-				PeerInfo pi = (PeerInfo)pc.attachment();
+			if (pc.attachment() instanceof PeerRequestInfo) {
+				PeerRequestInfo pi = (PeerRequestInfo)pc.attachment();
 				Log.d(TAG, "onFail PeerInfo "+pi);
-				pi.state = PeerState.STATE_CONNECTING_FAILED;
+				pi.state = PeerRequestState.STATE_CONNECTING_FAILED;
 				pi.detail = null;
 				updatePeer(pi);
 			}
@@ -444,11 +444,11 @@ public class PeerManager {
 		}
 
 		public void onConnected(PeerConnection pc) {
-			if (pc.attachment() instanceof PeerInfo) {
-				PeerInfo pi = (PeerInfo)pc.attachment();
-				if (pi.state==PeerState.STATE_CONNECTING) {
+			if (pc.attachment() instanceof PeerRequestInfo) {
+				PeerRequestInfo pi = (PeerRequestInfo)pc.attachment();
+				if (pi.state==PeerRequestState.STATE_CONNECTING) {
 					Log.d(TAG, "onConnected -> connected PeerInfo "+pi);
-					pi.state = PeerState.STATE_CONNECTED;
+					pi.state = PeerRequestState.STATE_CONNECTED;
 					pi.detail = null;
 					broadcastPeerState(pi);
 					updatePeer(pi);
@@ -460,14 +460,14 @@ public class PeerManager {
 		}
 	};
 	
-	private synchronized void connectPeer(PeerInfo pi) {
+	private synchronized void connectPeer(PeerRequestInfo pi) {
 		if (pi.src==null) {
-			pi.state = PeerState.STATE_CONNECTING_FAILED;
+			pi.state = PeerRequestState.STATE_CONNECTING_FAILED;
 			pi.detail = "IP unknown";
 			updatePeer(pi);
 			return;
 		}
-		pi.state = PeerState.STATE_CONNECTING;
+		pi.state = PeerRequestState.STATE_CONNECTING;
 		pi.detail = "connectPeer()";
 		try {
 			Log.d(TAG,"Connect to "+pi.src.getHostAddress()+":"+pi.port);
@@ -477,7 +477,7 @@ public class PeerManager {
 			boolean done = pi.pc.isConnected();
 			if (done) {
 				//Toast.makeText(service, "Connected!", Toast.LENGTH_SHORT).show();
-				pi.state = PeerState.STATE_CONNECTED;
+				pi.state = PeerRequestState.STATE_CONNECTED;
 				pi.detail = "Connected immediately";
 			}
 			else {
@@ -497,7 +497,7 @@ public class PeerManager {
 			// Not just IOExceptions?!
 			Log.w(TAG,"Problem connecting to peer "+pi.src.getHostAddress()+":"+pi.port+": "+e.getMessage());
 			//Toast.makeText(service, "Error connecting: "+e, Toast.LENGTH_LONG).show();
-			pi.state = PeerState.STATE_CONNECTING_FAILED;
+			pi.state = PeerRequestState.STATE_CONNECTING_FAILED;
 			pi.detail = e.getMessage();
 			updatePeer(pi);
 		}		
@@ -524,7 +524,7 @@ public class PeerManager {
 		protected boolean clientPromptForPin(ClientInfo ci) {
 			// Notification?
 			// create taskbar notification
-			int icon = R.drawable.notification_icon;
+			int icon = R.drawable.peer_request_notification_icon;
 			CharSequence tickerText = "eer request from "+ci.name;
 			long when = System.currentTimeMillis();
 
@@ -551,10 +551,10 @@ public class PeerManager {
 		@Override
 		protected boolean clientHandlePeered(ClientInfo ci) {
 			// convert to PeerInfo
-			PeerInfo pi = new PeerInfo(ci);
+			PeerRequestInfo pi = new PeerRequestInfo(ci);
 			pi.secret1 = ci.secret1;
 			pi.secret2 = ci.secret2;
-			pi.state = PeerState.STATE_PEERED;
+			pi.state = PeerRequestState.STATE_PEERED;
 			pi.peerInfo = ci.peerInfo;
 			pi.src = ci.pc.getSocketChannel().socket().getInetAddress();
 			Log.i(TAG,"Converted ClientInfo to PeerInfo");
@@ -563,7 +563,7 @@ public class PeerManager {
 			peers.add(pi);
 			pi.pc.attach(pi);
 
-			Intent i = new Intent(ACTION_PEERS_CHANGED);
+			Intent i = new Intent(ACTION_PEER_REQUESTS_CHANGED);
 			service.sendBroadcast(i);
 
 			// don't handle more messages as a client
@@ -587,13 +587,13 @@ public class PeerManager {
 		}
 
 	}
-	protected synchronized void failPeer(PeerInfo pi, String detail) {
-		pi.state = PeerState.STATE_CONNECTING_FAILED;
+	protected synchronized void failPeer(PeerRequestInfo pi, String detail) {
+		pi.state = PeerRequestState.STATE_CONNECTING_FAILED;
 		pi.detail = detail;
 		broadcastPeerState(pi);
 		removePeer(pi);
 	}
-	protected synchronized void checkMessages(PeerInfo pi) {
+	protected synchronized void checkMessages(PeerRequestInfo pi) {
 		Message m = null;
 		while ((m=pi.pc.getMessage())!=null) {
 			switch (pi.state){
@@ -603,7 +603,7 @@ public class PeerManager {
 					failPeer(pi, "Incompatible protocol: "+m.body);
 					return;
 				}
-				pi.state = PeerState.STATE_PEER_REQ;
+				pi.state = PeerRequestState.STATE_PEER_REQ;
 				pi.detail = null;
 				broadcastPeerState(pi);
 				sendPeerRequest(pi);
@@ -629,7 +629,7 @@ public class PeerManager {
 		}		
 		
 	}
-	private synchronized void startSrvDiscovery(final PeerInfo pi) {
+	private synchronized void startSrvDiscovery(final PeerRequestInfo pi) {
 		// 1: do SRV discovery to get IP/Port
 		String name = DnsUtils.getServiceDiscoveryName();
 		DnsClient dc = getDnsClient(name, DnsProtocol.TYPE_SRV, pi.src);
@@ -661,13 +661,13 @@ public class PeerManager {
 				dnsClients.put(name, dcs);
 			}
 			dcs.add(fdc);
-			pi.state = PeerState.STATE_SRV_DISCOVERY;
+			pi.state = PeerRequestState.STATE_SRV_DISCOVERY;
 			broadcastPeerState(pi);
 			fdc.start();
 			return;
 		}
 		else {
-			pi.state = PeerState.STATE_SRV_DISCOVERY;
+			pi.state = PeerRequestState.STATE_SRV_DISCOVERY;
 			// handle result? (not too old, but may have finished, or not)
 			boolean done = dc.getDone();
 			if (done) {
@@ -684,19 +684,19 @@ public class PeerManager {
 		// 4: wait for and handle response 		
 	private synchronized void srvDiscoveryComplete(DnsClient dc, InetAddress src) {
 		// copy peers in case of delete
-		ArrayList<PeerInfo> peers2 = new ArrayList<PeerInfo>();
+		ArrayList<PeerRequestInfo> peers2 = new ArrayList<PeerRequestInfo>();
 		peers2.addAll(peers);
 		for (int i=0; i<peers2.size(); i++) {
-			PeerInfo pi = peers2.get(i);
-			if (pi.state==PeerState.STATE_SRV_DISCOVERY && pi.src.equals(src)) {
+			PeerRequestInfo pi = peers2.get(i);
+			if (pi.state==PeerRequestState.STATE_SRV_DISCOVERY && pi.src.equals(src)) {
 				LinkedList<DnsProtocol.RR> as = dc.getAnswers();
 				if (as.size()==0) {
-					pi.state = PeerState.STATE_SRV_DISCOVERY_FAILED;
+					pi.state = PeerRequestState.STATE_SRV_DISCOVERY_FAILED;
 					updatePeer(pi);
 				} else {
 					try {
 						DnsProtocol.SrvData srv = DnsProtocol.srvFromData(as.get(0).rdata);
-						pi.state = PeerState.STATE_SRV_FOUND;
+						pi.state = PeerRequestState.STATE_SRV_FOUND;
 						pi.port = srv.port;
 						if (!srv.target.equals(src.getHostAddress())) {
 							Log.w(TAG,"SRV returned different IP: "+srv.target+" vs "+src.getHostAddress());
@@ -704,17 +704,17 @@ public class PeerManager {
 						updatePeer(pi);
 					} catch (IOException e) {
 						Log.w(TAG,"Error parsing SRV data: "+e.getMessage());
-						pi.state = PeerState.STATE_SRV_DISCOVERY_FAILED;					
+						pi.state = PeerRequestState.STATE_SRV_DISCOVERY_FAILED;					
 						updatePeer(pi);
 					}					
 				}
 			}
 		}
 	}
-	private synchronized void removePeer(PeerInfo pi) {
+	private synchronized void removePeer(PeerRequestInfo pi) {
 		if (peers.remove(pi))
 		{
-			Intent i = new Intent(ACTION_PEERS_CHANGED);
+			Intent i = new Intent(ACTION_PEER_REQUESTS_CHANGED);
 			service.sendBroadcast(i);
 		}
 		if (pi.pc!=null) {
@@ -723,17 +723,17 @@ public class PeerManager {
 		}
 	}
 	
-	private synchronized void negotiateProtocol(PeerInfo pi) {
+	private synchronized void negotiateProtocol(PeerRequestInfo pi) {
 		// Start negotiation on PeerConnection...
 		// protocol hello
 		String protocol = Message.getHelloBody();
 		Message m = new Message(Message.Type.HELLO, null, null, protocol);
 		pi.pc.sendMessage(m);
-		pi.state = PeerState.STATE_NEGOTIATE_PROTOCOL;
+		pi.state = PeerRequestState.STATE_NEGOTIATE_PROTOCOL;
 		broadcastPeerState(pi);
 		return;
 	}		
-	private synchronized void sendPeerRequest(PeerInfo pi) {
+	private synchronized void sendPeerRequest(PeerRequestInfo pi) {
 		
 		// create peer request
 		JSONObject msg = new JSONObject();
@@ -763,7 +763,7 @@ public class PeerManager {
 			Message m = new Message(Message.Type.MANAGEMENT, null, null, msg.toString());
 			pi.pc.sendMessage(m);
 			
-			pi.state = PeerState.STATE_PEER_REQ;
+			pi.state = PeerRequestState.STATE_PEER_REQ;
 			pi.detail = "Pin is "+pi.pin;
 			broadcastPeerState(pi);
 		} catch (JSONException e) {
@@ -775,7 +775,7 @@ public class PeerManager {
 		}		
 	}	
 	/** called from checkMessage(pi) to handle message in state STATE_PEER_REQ */
-	private boolean handlePeerReqResponse(PeerInfo pi, Message m) {
+	private boolean handlePeerReqResponse(PeerRequestInfo pi, Message m) {
 		if (m.type!=Message.Type.MANAGEMENT) {
 			failPeer(pi, "Received init_peer_req response of type "+m.type);
 			return false;
@@ -830,7 +830,7 @@ public class PeerManager {
 			Message r = new Message(Message.Type.MANAGEMENT, null, null, resp.toString());
 			pi.pc.sendMessage(r);
 			
-			pi.state = PeerState.STATE_PEER_DONE;
+			pi.state = PeerRequestState.STATE_PEER_DONE;
 			pi.detail = null;
 
 			broadcastPeerState(pi);
@@ -844,7 +844,7 @@ public class PeerManager {
 		return false;
 	}
 	/** nopin response from peer in response to pin request */
-	private boolean handlePeerNopin(PeerInfo pi, JSONObject msg) {
+	private boolean handlePeerNopin(PeerRequestInfo pi, JSONObject msg) {
 		try {
 			pi.id = msg.getString(MessageUtils.KEY_ID);
 			// TODO known IDs?
@@ -864,7 +864,7 @@ public class PeerManager {
 		}
 		Log.i(TAG,"Received resp_peer_nopin in state peer_req");
 
-		pi.state = PeerState.STATE_PEERED_UNTRUSTED;
+		pi.state = PeerRequestState.STATE_PEERED_UNTRUSTED;
 		pi.detail = "no pin";
 
 		broadcastPeerState(pi);
@@ -896,7 +896,7 @@ public class PeerManager {
 	}
 	private static int peerRequestNotificationId = 2;
 	/** called on receipt of message after init_peer_done in peer */
-	private boolean handlePeerDoneResponse(PeerInfo pi, Message m) {
+	private boolean handlePeerDoneResponse(PeerRequestInfo pi, Message m) {
 		if (m.type!=Message.Type.MANAGEMENT) {
 			failPeer(pi, "Received init_peer_done response of type "+m.type);
 			return false;
@@ -915,7 +915,7 @@ public class PeerManager {
 			return false;
 		}
 		// all done
-		pi.state = PeerState.STATE_PEERED;
+		pi.state = PeerRequestState.STATE_PEERED;
 		pi.detail = null;
 		broadcastPeerState(pi);
 
@@ -987,19 +987,19 @@ public class PeerManager {
 	}
 	/** public API - start peer add for specified host/port. Return PeerInfoActivity intent */
 	public synchronized Intent addPeer(InetAddress host, int port) {
-		Intent i = new Intent(service, PeerInfoActivity.class);
+		Intent i = new Intent(service, PeerRequestInfoActivity.class);
 		i.putExtra(EXTRA_SOURCEIP, host.getHostAddress());
 		i.putExtra(EXTRA_PORT, port);
 		String name =  "Unknown (manually added)";
 		i.putExtra(EXTRA_NAME, name);
 		
-		PeerInfo pi = new PeerInfo(name, host);
+		PeerRequestInfo pi = new PeerRequestInfo(name, host);
 		pi.port = port;
-		pi.state = PeerState.STATE_SRV_FOUND;
+		pi.state = PeerRequestState.STATE_SRV_FOUND;
 
 		peers.add(pi);
 		
-		Intent bi = new Intent(ACTION_PEERS_CHANGED);
+		Intent bi = new Intent(ACTION_PEER_REQUESTS_CHANGED);
 		service.sendBroadcast(bi);
 		updatePeer(pi);
 

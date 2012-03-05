@@ -84,7 +84,7 @@ public class Service extends android.app.Service {
 		// handler for requests
 		mHandler = new Handler();
 		// create taskbar notification
-		int icon = R.drawable.notification_icon;
+		int icon = R.drawable.service_notification_icon;
 		CharSequence tickerText = getText(R.string.notification_start_message);
 		long when = System.currentTimeMillis();
 
