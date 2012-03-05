@@ -71,7 +71,7 @@ public class SearchPeersActivity extends Activity {
 		setContentView(R.layout.search_peers);
 
 		// search
-		peerSearchAdapter = new ArrayAdapter<PeerManager.SearchInfo>(this, R.layout.peer_item);
+		peerSearchAdapter = new ArrayAdapter<PeerManager.SearchInfo>(this, R.layout.search_peer_item);
 		//aa.add("Hello list 2");
 		ListView lv = (ListView)findViewById(R.id.peer_search_list);
 		// following line fails with addView not supported in AdapterView
@@ -100,7 +100,7 @@ public class SearchPeersActivity extends Activity {
 		});
 		
 		// requests
-		peerRequestAdapter = new ArrayAdapter<PeerRequestWrapper>(this, R.layout.peer_item);
+		peerRequestAdapter = new ArrayAdapter<PeerRequestWrapper>(this, R.layout.search_peer_item);
 		//aa.add("Hello list");
 		lv = (ListView)findViewById(R.id.peer_request_list);
 		// following line fails with addView not supported in AdapterView

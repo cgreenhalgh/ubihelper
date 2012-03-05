@@ -175,6 +175,8 @@ public class Service extends android.app.Service {
 		peerManager = new PeerManager(this);
 		int serverPort = peerManager.getServerPort();
 		
+		channelManager.addChannel(new EnabledPeersChannel(this, peerManager, "peers"));
+		
 		// wifi discovery
 		wifiDiscoveryManager = new WifiDiscoveryManager(this);
 		wifiDiscoverable = getWifiDiscoverable();

@@ -3,9 +3,12 @@
  */
 package uk.ac.horizon.ubihelper.ui;
 
+import java.util.Date;
+
 import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.id;
 import uk.ac.horizon.ubihelper.R.layout;
+import uk.ac.horizon.ubihelper.protocol.PeerInfo;
 import uk.ac.horizon.ubihelper.service.PeerManager;
 import uk.ac.horizon.ubihelper.service.Service;
 import uk.ac.horizon.ubihelper.service.PeerManager.PeerRequestInfo;
@@ -22,30 +25,29 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.TextView;
 
 /**
  * @author cmg
  *
  */
-public class PeerRequestInfoActivity extends Activity {
+public class PeerInfoActivity extends Activity {
 	static final String TAG = "ubihelper-peerinfo";
 	
 	private PeerManager peerManager;
-	private PeerManager.PeerRequestInfo peerInfo;
-	private TextView peerInfoName, peerInfoSourceip, peerInfoState, peerInfoPort, peerInfoDetail;
+	private PeerInfo peerInfo;
+	private TextView peerInfoName, peerInfoIp, peerInfoIpTimestamp, peerInfoId, peerInfoTrusted;
+	private CheckBox peerInfoEnabled;
 	
-	public static Intent getStartActivityIntent(Context context, PeerManager.SearchInfo si) {
-		Intent i = new Intent(context, PeerRequestInfoActivity.class);
-		i.putExtra(PeerManager.EXTRA_NAME, si.name);
-		i.putExtra(PeerManager.EXTRA_SOURCEIP, si.src.getHostAddress());
-		return i;
+	public static Intent getStartActivityIntent(Context context, PeerInfo pi) {
+		return getStartActivityIntent(context, pi.id);
 	}
-	public static Intent getStartActivityIntent(Context context,
-			PeerRequestInfo pi) {
-		Intent i = new Intent(context, PeerRequestInfoActivity.class);
-		i.putExtra(PeerManager.EXTRA_NAME, pi.instanceName);
-		i.putExtra(PeerManager.EXTRA_SOURCEIP, pi.src.getHostAddress());
+	public static Intent getStartActivityIntent(Context context, String id) {
+		Intent i = new Intent(context, PeerInfoActivity.class);
+		i.putExtra(PeerManager.EXTRA_ID, id);
 		return i;
 	}
 
@@ -67,62 +69,42 @@ public class PeerRequestInfoActivity extends Activity {
 	
 
 	private void refresh(Intent intent) {
-		if (intent!=null) {
-			String id = intent.getExtras().getString(PeerManager.EXTRA_ID);
-			if (id!=null) {
-				String state = intent.getExtras().getString(PeerManager.EXTRA_PEER_STATE);
-				if (PeerManager.PeerRequestState.STATE_PEERED.name().equals(state) ||
-						PeerManager.PeerRequestState.STATE_PEERED_UNTRUSTED.name().equals(state)) {
-					finish();
-					startActivity(PeerInfoActivity.getStartActivityIntent(this, id));
-					return;
-				}						
-			}
-		}
 		//Log.d(TAG,"refresh start");
 		// this routine blocks when called from ServiceConnection, presumably because of the call to getPeer
 		boolean ok = false;
 		// fallback values
 		if (getIntent()!=null) {
+			String id = getIntent().getExtras().getString(PeerManager.EXTRA_ID);
+			peerInfoId.setText(id);
 			String name = getIntent().getExtras().getString(PeerManager.EXTRA_NAME);
-			peerInfoName.setText(name);
-			String sourceip = getIntent().getExtras().getString(PeerManager.EXTRA_SOURCEIP);
-			peerInfoSourceip.setText(sourceip);
+			if (name!=null)
+				peerInfoName.setText(name);
 		}
 		if (peerManager!=null && getIntent()!=null) {
 			//Log.d(TAG,"getPeer...");
+			String id = getIntent().getExtras().getString(PeerManager.EXTRA_ID);
 			// this call blocks when called from ServiceConnection, presumably because of the lock on getPeer
-			peerInfo = peerManager.getPeer(getIntent());
+			peerInfo = peerManager.getPeer(id);
 			//Log.d(TAG,"getPeer done");
 			if (peerInfo!=null) {
-				peerInfoName.setText(peerInfo.instanceName);
-				peerInfoSourceip.setText(peerInfo.src.getHostAddress());
-				peerInfoState.setText(peerInfo.state.name());
-				peerInfoPort.setText(Integer.toString(peerInfo.port));
-				peerInfoDetail.setText(peerInfo.detail!=null ? peerInfo.detail : "");
+				peerInfoName.setText(peerInfo.name);
+				peerInfoIp.setText(peerInfo.ip);
+				peerInfoIpTimestamp.setText(new Date(peerInfo.ipTimestamp).toString());
+				peerInfoEnabled.setChecked(peerInfo.enabled);
+				peerInfoTrusted.setText(peerInfo.trusted ? "Yes" : "No");
 				ok = true;
 			}
 			else if (intent!=null) {
-				try {
-					String state = PeerManager.PeerRequestState.values()[intent.getExtras().getInt(PeerManager.EXTRA_PEER_STATE)].name();
-					peerInfoState.setText(state+" (deleted)");
-				}
-				catch (Exception e) {
-					int state = intent.getExtras().getInt(PeerManager.EXTRA_PEER_STATE);
-					peerInfoState.setText(state+" (deleted)");
-				}
-				String detail = intent.getExtras().getString(PeerManager.EXTRA_DETAIL);
-				peerInfoDetail.setText(detail!=null ? detail : "");
-				peerInfoPort.setText("?");			
+				//  ?
 				ok = true;
 			}
 		}
 		if (!ok) {
 			//peerInfoName.setText("?");
 			//peerInfoSourceip.setText("?");
-			peerInfoState.setText("?");
-			peerInfoPort.setText("?");			
-			peerInfoDetail.setText("?");			
+			peerInfoEnabled.setText("?");
+			peerInfoIp.setText("?");			
+			peerInfoIpTimestamp.setText("?");			
 		}
 		Log.d(TAG,"refresh complete");
 	}
@@ -130,7 +112,7 @@ public class PeerRequestInfoActivity extends Activity {
 	private BroadcastReceiver peerChangeListener = new BroadcastReceiver () {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			if (peerInfo!=null && PeerManager.matches(peerInfo, intent))
+			if (peerInfo!=null && peerInfo.id.equals(intent.getExtras().getString(PeerManager.EXTRA_ID)))
 				refresh(intent);
 		}		
 	};
@@ -138,19 +120,26 @@ public class PeerRequestInfoActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.peer_request_info);
+		setContentView(R.layout.peer_info);
 		peerInfoName = (TextView)findViewById(R.id.peer_info_name);
-		peerInfoSourceip= (TextView)findViewById(R.id.peer_info_sourceip);
-		peerInfoState = (TextView)findViewById(R.id.peer_info_state);
-		peerInfoPort = (TextView)findViewById(R.id.peer_info_port);
-		peerInfoDetail = (TextView)findViewById(R.id.peer_info_detail);
+		peerInfoId = (TextView)findViewById(R.id.peer_info_id);
+		peerInfoIp = (TextView)findViewById(R.id.peer_info_ip);
+		peerInfoIpTimestamp = (TextView)findViewById(R.id.peer_info_ip_timetamp);
+		peerInfoTrusted = (TextView)findViewById(R.id.peer_info_trusted);
+		peerInfoEnabled = (CheckBox)findViewById(R.id.peer_info_enabled);
+		peerInfoEnabled.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				if (peerManager!=null && peerInfo.enabled!=isChecked)
+					peerManager.setPeerEnabled(peerInfo, isChecked);
+			}
+		});
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
 		Intent i = new Intent(this, Service.class);
-		IntentFilter peerChangeFilter = new IntentFilter(PeerManager.ACTION_PEER_REQUEST_STATE_CHANGED);
+		IntentFilter peerChangeFilter = new IntentFilter(PeerManager.ACTION_PEER_STATE_CHANGED);
 		registerReceiver(peerChangeListener, peerChangeFilter);
 		bindService(i, mServiceConnection, 0);
 	}

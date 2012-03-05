@@ -1,10 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
-	style="@style/list_item_title"
-    android:text="Item text"
-     >
-    
+    android:orientation="horizontal" 
+    >
+<CheckBox 
+    android:id="@+id/peer_item_enabled"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="right"
+    android:layout_alignParentRight="true"
+    />
 
+    
+<LinearLayout  
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical" 
+    android:layout_gravity="left"
+    android:layout_alignParentLeft="true"
+    android:layout_toLeftOf="@id/peer_item_enabled"
+    >
+
+<TextView
+
+    android:id="@+id/peer_item_name"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="(name)"
+    android:paddingTop="6dp"
+        android:textAppearance="?android:attr/textAppearanceLarge" >
 </TextView>
+
+<TextView
+
+    android:id="@+id/peer_item_description"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="(description)"
+    android:paddingBottom="6dp"
+        android:textAppearance="?android:attr/textAppearanceSmall" >
+</TextView>
+
+
+</LinearLayout>
+
+
+</RelativeLayout> 

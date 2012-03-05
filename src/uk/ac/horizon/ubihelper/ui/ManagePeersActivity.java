@@ -8,7 +8,9 @@ import java.util.List;
 
 import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.R.layout;
+import uk.ac.horizon.ubihelper.protocol.PeerInfo;
 import uk.ac.horizon.ubihelper.service.PeerManager;
+import uk.ac.horizon.ubihelper.service.PeersOpenHelper;
 import uk.ac.horizon.ubihelper.service.Service;
 import uk.ac.horizon.ubihelper.service.PeerManager.PeerRequestInfo;
 import uk.ac.horizon.ubihelper.service.Service.LocalBinder;
@@ -21,6 +23,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -29,12 +33,17 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.HeaderViewListAdapter;
 import android.widget.ListView;
 import android.widget.ListView.FixedViewInfo;
+import android.widget.CompoundButton;
+import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,40 +55,79 @@ public class ManagePeersActivity extends ListActivity {
 	static final String TAG = "ubihelper-managepeers";
 	private View searchView;
 	private PeerManager peerManager;
-	private ArrayAdapter<PeerWrapper> peersAdapter;
+	private ArrayAdapter<PeerInfo> peersAdapter;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		peersAdapter = new ArrayAdapter<PeerWrapper>(this, R.layout.peer_item);
+		final OnClickListener clickListener = new OnClickListener() {
+			public void onClick(View view) {
+				PeerInfo pi = (PeerInfo)view.getTag();
+				Log.d(TAG,"onItemClick "+pi.name);
+				Intent i = PeerInfoActivity.getStartActivityIntent(ManagePeersActivity.this, pi);
+				startActivity(i);
+			}
+		};
+		final OnCheckedChangeListener enableListener = new OnCheckedChangeListener() {
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				PeerInfo pi = (PeerInfo)buttonView.getTag();
+				Log.d(TAG,"onCheckedChanged "+pi.name+" -> "+isChecked);
+				if (peerManager!=null && pi.enabled!=isChecked)
+					peerManager.setPeerEnabled(pi, isChecked);
+			}
+		};
+		peersAdapter = new ArrayAdapter<PeerInfo>(this, R.layout.peer_item, R.id.peer_item_name) {
+			@Override
+			public View getView(int position, View convertView, ViewGroup parent) {
+				View v = convertView;
+				if (v==null) {
+					v = ManagePeersActivity.this.getLayoutInflater().inflate(R.layout.peer_item, null);
+				}
+				PeerInfo pi = getItem(position);
+				CheckBox enabled = (CheckBox)v.findViewById(R.id.peer_item_enabled);
+				enabled.setTag(pi);
+				enabled.setChecked(pi.enabled);
+				//enabled.setEnabled(false);
+				enabled.setOnCheckedChangeListener(enableListener);
+				TextView name = (TextView)v.findViewById(R.id.peer_item_name);
+				name.setText(pi.name);
+				TextView description = (TextView)v.findViewById(R.id.peer_item_description);
+				description.setText(pi.trusted ? "Trusted peer" : "Untrusted peer");
+				v.setClickable(true);
+				v.setTag(pi);
+				v.setOnClickListener(clickListener);
+				return v;
+			}			
+		};
 		//aa.add("Hello list");
 		ListView lv = getListView();
 		// following line fails with addView not supported in AdapterView
 		searchView = getLayoutInflater().inflate(R.layout.add_peer_item, null);
-		lv.addHeaderView(searchView, "Add a new peer", true);
+		lv.addFooterView(searchView, "Add a new peer", true);
 		lv.setAdapter(peersAdapter);
-		
 		lv.setOnItemClickListener(new OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+			public void onItemClick(AdapterView<?> adapter, View view, int arg2, long arg3) { 
 				if (view==searchView) {
 					Intent i = new Intent(ManagePeersActivity.this, SearchPeersActivity.class);
 					startActivity(i);
 				}
-				else {
-					if (position>=1 && position<=peersAdapter.getCount()) {
-//						PeerManager.PeerRequestInfo pi = peersAdapter.getItem(position-1).peerInfo;
-//						Intent i = PeerRequestInfoActivity.getStartActivityIntent(ManagePeersActivity.this, pi);
-//						startActivity(i);
-					}
-				}
-			}			
+			}
 		});
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see android.app.ListActivity#onDestroy()
+	 */
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-//		registerReceiver(peersChangedReceiver, new IntentFilter(PeerManager.ACTION_PEER_REQUESTS_CHANGED));
+		registerReceiver(peersChangedReceiver, new IntentFilter(PeerManager.ACTION_PEERS_CHANGED));
 		Intent i = new Intent(this, Service.class);
 		bindService(i, mServiceConnection, 0);
 	}
@@ -88,7 +136,7 @@ public class ManagePeersActivity extends ListActivity {
 	protected void onStop() {
 		super.onStop();
 		unbindService(mServiceConnection);
-//		unregisterReceiver(peersChangedReceiver);
+		unregisterReceiver(peersChangedReceiver);
 	}
 
 	/** monitor binding to service (used for preference update push) */
@@ -113,25 +161,15 @@ public class ManagePeersActivity extends ListActivity {
 			refresh();
 		}
 	};	
-	
-	private static class PeerWrapper {
-//		private PeerManager.PeerRequestInfo peerInfo;
-//		PeerWrapper(PeerManager.PeerRequestInfo peerInfo) {
-//			this.peerInfo = peerInfo;
-//		}
-//		public String toString() {
-//			return peerInfo.instanceName;
-//		}
-	}
+
 	protected void refresh() {
-		// TODO Auto-generated method stub
-		if (peerManager==null)
-			return;
-		peersAdapter.clear();		
-//		List<PeerManager.PeerRequestInfo> peers = peerManager.getPeerRequests();
-//		for (PeerManager.PeerRequestInfo pi : peers) {
-//			peersAdapter.add(new PeerWrapper(pi));
-//		}
+		peersAdapter.clear();
+		
+		List<PeerInfo> peers = peerManager.getPeers();
+		for (PeerInfo pi : peers) {
+			Log.d(TAG,"Retrieved PeerInfo "+pi.id);
+			peersAdapter.add(pi);
+		}
 	}
 	
 }

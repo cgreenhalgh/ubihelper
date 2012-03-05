@@ -14,33 +14,33 @@
         android:id="@+id/peer_info_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:text="(Name)"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="ID"
+        android:text="State"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
-        android:id="@+id/peer_info_id"
+        android:id="@+id/peer_info_state"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:text="(State)"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Trusted?"
+        android:text="Detail"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
-        android:id="@+id/peer_info_trusted"
+        android:id="@+id/peer_info_detail"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:text="(Detail)"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
     <TextView
@@ -50,33 +50,23 @@
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
-        android:id="@+id/peer_info_ip"
+        android:id="@+id/peer_info_sourceip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:text="(IP Address)"
         android:textAppearance="?android:attr/textAppearanceLarge" />
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="IP Updated"
+        android:text="Port"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
-        android:id="@+id/peer_info_ip_timetamp"
+        android:id="@+id/peer_info_port"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:text="(Port)"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Enabled?"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
     
-    <CheckBox
-        android:id="@+id/peer_info_enabled"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        />
 </LinearLayout>

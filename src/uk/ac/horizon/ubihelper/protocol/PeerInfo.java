@@ -17,7 +17,7 @@ import uk.ac.horizon.ubihelper.net.PeerConnection;
  */
 public class PeerInfo {
 	/** row id (DB internal) */
-	public int _id = -1;
+	public long _id = -1;
 	/** device ID */
 	public String id;
 	/** subjective name (optional?) */
@@ -56,4 +56,20 @@ public class PeerInfo {
 	public String detail;
 
 	public PeerInfo() {}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "PeerInfo [_id=" + _id + ", id=" + id + ", nickname=" + nickname
+				+ ", name=" + name + ", info=" + info + ", btmac=" + btmac
+				+ ", wifimac=" + wifimac + ", imei=" + imei + ", secret="
+				+ secret + ", trusted=" + trusted + ", enabled=" + enabled
+				+ ", createdTimestamp=" + createdTimestamp + ", ip=" + ip
+				+ ", ipTimestamp=" + ipTimestamp + ", port=" + port
+				+ ", portTimestamp=" + portTimestamp + ", pc=" + pc
+				+ ", detail=" + detail + "]";
+	}
+
 }

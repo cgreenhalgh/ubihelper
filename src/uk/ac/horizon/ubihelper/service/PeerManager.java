@@ -82,7 +82,7 @@ public class PeerManager {
 	private SQLiteDatabase database;
 	/** partial, id -> PeerInfo */
 	private HashMap<String,PeerInfo> peerInfoCache = new HashMap<String,PeerInfo>();
-	
+
 	public static class SearchInfo {
 		public String name;
 		public InetAddress src;
@@ -113,7 +113,7 @@ public class PeerManager {
 	/** info keys */
 	private static final String KEY_IMEI = "imei";
 	private static final String KEY_WIFIMAC = "wifimac";
-	private static final String KEY_BTMAC = "bcmac";
+	private static final String KEY_BTMAC = "btmac";
 	
 	public PeerManager(Service service) {		
 		this.service = service;
@@ -647,16 +647,20 @@ public class PeerManager {
 				// update!
 				pi._id = pi2._id;
 				pi.enabled = pi2.enabled;
-				Log.d(TAG,"Updating peer "+pi.id+" on addPeer");
+				Log.d(TAG,"Updating peer "+pi.id+" on addPeer to "+pi);
 				PeersOpenHelper.updatePeerInfo(database, pi);
 			}
 			else {
 				// add
 				PeersOpenHelper.addPeerInfo(database, pi);
+				Log.d(TAG,"Added Peer "+pi.id+" as "+pi._id);
 			}
-			
-			// TODO add to peers
-			// TODO broadcast etc.!
+			database.setTransactionSuccessful();
+			// add to peers
+			peerInfoCache.put(pi.id, pi);
+			// broadcast etc.!
+			Intent i = new Intent(ACTION_PEERS_CHANGED);
+			service.sendBroadcast(i);
 		}
 		finally {
 			database.endTransaction();
@@ -984,7 +988,7 @@ public class PeerManager {
 			WifiInfo wifiinfo = wifi.getConnectionInfo();
 			String wifimac = wifiinfo.getMacAddress();
 			if (wifimac!=null)
-				info.put(KEY_WIFIMAC, wifi);
+				info.put(KEY_WIFIMAC, wifimac);
 			// note: cannot get BluetoothAdapter from comms thread if not a looper
 			String btmac = service.getBtMac();
 			if(btmac!=null)	
@@ -1115,5 +1119,41 @@ public class PeerManager {
 		updatePeer(pi);
 
 		return i;
+	}
+	public synchronized List<PeerInfo> getPeers() {
+		return PeersOpenHelper.getPeerInfos(database);
+	}
+	public synchronized List<PeerInfo> getEnabledPeers() {
+		return PeersOpenHelper.getPeerInfos(database, PeersOpenHelper.KEY_ENABLED+" = 1", null);
+	}
+	public synchronized PeerInfo getPeer(String id) {
+		PeerInfo pi = peerInfoCache.get(id);
+		if (pi==null) {
+			pi = PeersOpenHelper.getPeerInfo(database, id);
+			if (pi!=null)
+				peerInfoCache.put(id, pi);
+		}
+		return pi;
+	}
+	public synchronized void setPeerEnabled(PeerInfo peerInfo, boolean isChecked) {
+		peerInfo.enabled = isChecked;
+		PeerInfo pi = getPeer(peerInfo.id);
+		pi.enabled = peerInfo.enabled;
+		PeersOpenHelper.updatePeerInfo(database, pi);
+		peerInfoCache.put(pi.id, pi);
+		
+		Log.d(TAG,"setPeerEnabled id="+peerInfo.id+" -> "+isChecked);
+		
+		Intent i = new Intent(ACTION_PEER_STATE_CHANGED);
+		i.putExtra(EXTRA_ID, pi.id);
+		broadcastPeerState(pi);
+	}
+	private void broadcastPeerState(PeerInfo pi) {
+		Intent i = new Intent(ACTION_PEER_STATE_CHANGED);
+		i.putExtra(EXTRA_ID, pi.id);
+		i.putExtra(EXTRA_NAME, pi.name);
+		//Log.d(TAG,"sendBroadcast (peer state)...");
+		service.sendBroadcast(i);
+		//Log.d(TAG,"sendBroadcast done");
 	}
 }
