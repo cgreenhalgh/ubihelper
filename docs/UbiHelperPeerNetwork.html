@@ -201,6 +201,9 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>pindigest = bas64-encoded MD5 digest of initiator nonce and UTF-8 encoded pin</li>
 <li>port = initiator service port</li>
 <li>name = device (discovery) name</li>
+    <li>(opt.) reason = "challenge_failed" | "unknown_peer" - when sent after a failure - see resp_peer_known response, below<br>
+    </li>
+
 </ul><li>responder&nbsp;</li>
 <ul>
 <li>with PIN UI, requests PIN from user, and sends MANAGEMENT message with properties:</li>
@@ -221,12 +224,16 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>info = ...</li>
 <li>secret = ...</li>
 </ul>
-<li>known ID with established session, sends MANAGEMENT</li>
+<li>known ID with established session, sends MANAGEMENT (c.f. resp_confirm, below)<br>
+</li>
 <ul>
 <li>type = "resp_peer_known"</li>
 <li>id = ....</li>
 <li>name = ...</li>
 <li>port = ...</li>
+      <li>challenge1resp = base64-encoded MD5 digest of pindigest and secret</li>
+      <li>challenge2 = base64-encoded challenge</li>
+
 </ul>
 </ul>
 <li>initiator -&nbsp;</li>
@@ -240,6 +247,18 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>secret = base64-encoded seed for shared secret</li>
 <li>pinnonce = base64-encoded nonce used to generate pin digest in init_peer_req</li>
 </ul>
+    <li>receives resp_peer_known</li>
+    <ul>
+      <li>with known ID and correct challenge1resp -&gt; send init_confirm_done (below)</li>
+    </ul>
+    <ul>
+      <li>else return init_peer_req with <br>
+      </li>
+      <ul>
+        <li>reason = "challenge_failed" | "unknown_peer"</li>
+      </ul>
+    </ul>
+
 </ul>
 <li>responder -&nbsp;</li>
 <ul>
@@ -294,7 +313,8 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
     </li>
     <ul>
       <li>type = "reject"</li>
-      <li>reason = "id" | "secret"</li>
+      <li>reason = "not_my_id" | "challenge_failed | "unknown_peer"<br>
+      </li>
       <li>message = HUMAN-READABLE</li>
     </ul>
   </ul>
