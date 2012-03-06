@@ -40,6 +40,8 @@ public class PeerInfo {
 	public boolean enabled;
 	/** created (java)time */
 	public long createdTimestamp;
+	/** manual entry (vs discovery) */
+	public boolean manual;
 	/** IP address */
 	public String ip;
 	/** time IP address (last) established */
@@ -57,19 +59,16 @@ public class PeerInfo {
 
 	public PeerInfo() {}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
 	@Override
 	public String toString() {
 		return "PeerInfo [_id=" + _id + ", id=" + id + ", nickname=" + nickname
 				+ ", name=" + name + ", info=" + info + ", btmac=" + btmac
 				+ ", wifimac=" + wifimac + ", imei=" + imei + ", secret="
 				+ secret + ", trusted=" + trusted + ", enabled=" + enabled
-				+ ", createdTimestamp=" + createdTimestamp + ", ip=" + ip
-				+ ", ipTimestamp=" + ipTimestamp + ", port=" + port
-				+ ", portTimestamp=" + portTimestamp + ", pc=" + pc
-				+ ", detail=" + detail + "]";
+				+ ", createdTimestamp=" + createdTimestamp + ", manual="
+				+ manual + ", ip=" + ip + ", ipTimestamp=" + ipTimestamp
+				+ ", port=" + port + ", portTimestamp=" + portTimestamp
+				+ ", pc=" + pc + ", detail=" + detail + "]";
 	}
 
 }

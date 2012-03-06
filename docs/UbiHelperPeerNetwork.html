@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head>
-<body>
+<html><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head><body>
 <h1>UbiHelper Peer Network</h1>
 <p>
 
@@ -148,6 +148,7 @@ Ongoing use (with established authenticated connection (or HTTP request sequence
 <ul>
 <li>Message-oriented</li>
 <li>doesn't need to interoperate with existing protocol(s)</li><li>
+    <br>
 </li><li>Should include protocol declaration/agreement, including version on connection</li>
 <li>Should be useful for passing JSON-encoded messages. org.json
 marshalls to/from Strings only. So needs to pass UTF-8 encoded strings
@@ -210,7 +211,8 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>name = device (discovery) name (initiator usually has it anyway)</li>
 <li>pin = input pin text</li>
 </ul>
-<li>no PIN, sends MANAGEMENT (combination of resp_peer_pin & resp_peer_done)</li>
+<li>no PIN, sends MANAGEMENT (combination of resp_peer_pin &amp; resp_peer_done) -&gt; peered<br>
+</li>
 <ul>
 <li>type = "resp_peer_nopin"</li>
 <li>id = DEVICE-ID</li>
@@ -248,5 +250,68 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>secret = ...</li>
 </ul>
 </ul>
+</ul>Existing peer request (after new connection exchange):<br>
+
+<ul>
+<li>initiator sends MANAGEMENT message (JSON object) with properties:</li>
+  <ul>
+    <li>to trusted peer:<br>
+    </li>
+  </ul>
+  <ul>
+    <ul>
+<li>type = "init_confirm"</li><li>id = DEVICE-ID (unique)</li>
+      <li>confirmid = RECV-DEVICE-ID (expected)<br>
+      </li>
+      <li>challenge1 = base64-encoded challenge<br>
+      </li>
+<li>port = initiator service port</li><li>name = device (discovery) name</li>
+    </ul>
+    <li>untrusted peer</li>
+    <ul>
+      <li>type = "init_confirm_untrusted"</li>
+      <li>id = DEVICE-ID (unique)</li>
+      <li>confirmid = RECV-DEVICE-ID (expected)<br>
+  </li>
+      <li>port = initiator service port</li>
+      <li>name = device (discovery) name</li>
+    </ul>
+  </ul>
+  <li>responder</li>
+  <ul>
+    <li>untrusted, correct confirmid -&gt; reject, or return resp_peer_nopin (above) -&gt; peered<br>
+    </li>
+    <li>trusted, correct confirmid -&gt; generate challenge1digest using secret, return</li>
+    <ul>
+      <li>type = "resp_confirm"</li>
+      <li>id = DEVICE-ID</li>
+      <li>challenge1resp = base64-encoded MD5 digest of challenge1 and secret</li>
+      <li>challenge2 = base64-encoded challenge</li>
+      <li>name = device (discovery) name</li>
+      <li>port = service port (initiator should have used it anyway)</li>
+    </ul>
+    <li>wrong ID <br>
+    </li>
+    <ul>
+      <li>type = "reject"</li>
+      <li>reason = "id" | "secret"</li>
+      <li>message = HUMAN-READABLE</li>
+    </ul>
+  </ul>
+  <li>initiator</li>
+  <ul>
+    <li>after resp_confirm (trusted), check challenge1digest, OK, generate challenge2digest using secret, return<br>
+    </li>
+    <ul>
+      <li>type = "init_confirm_done"</li>
+      <li>challenge2resp = base64-encoded MD5 digest of challenge1 and secret</li>
+    </ul>
+  </ul>
+  <li>responder</li>
+  <ul>
+    <li>after init_confirm_done, check challenge2resp -&gt; reject or peered (no new information required)<br>
+    </li>
+  </ul>
 </ul>
+
 </body></html>

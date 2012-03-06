@@ -40,6 +40,7 @@ public class PeersOpenHelper extends SQLiteOpenHelper {
 	public static final String KEY_ID = "id";
 	public static final String KEY_SECRET = "secret";
 	public static final String KEY_CREATED_TIMESTAMP = "created_timestamp";
+	public static final String KEY_MANUAL = "manual";
 	public static final String KEY_IP_TIMESTAMP = "ip_timestamp";
 	public static final String KEY_IP = "ip";
 	public static final String KEY_PORT = "port";
@@ -52,7 +53,7 @@ public class PeersOpenHelper extends SQLiteOpenHelper {
 	//static final String KEY_PEERID = "groupid";
 	static final String PEER_TABLE_COLUMNS [] = new String[] {
 		KEY_ROW_ID, KEY_NICKNAME, KEY_ID, KEY_NAME, KEY_INFO, KEY_WIFIMAC,
-		KEY_BTMAC, KEY_IMEI, KEY_SECRET, KEY_CREATED_TIMESTAMP, KEY_IP,
+		KEY_BTMAC, KEY_IMEI, KEY_SECRET, KEY_CREATED_TIMESTAMP, KEY_MANUAL, KEY_IP,
 		KEY_IP_TIMESTAMP, KEY_PORT, KEY_PORT_TIMESTAMP, KEY_TRUSTED, KEY_ENABLED
 	};
 	private static final String PEER_TABLE_CREATE =
@@ -67,6 +68,7 @@ public class PeersOpenHelper extends SQLiteOpenHelper {
 					KEY_IMEI + " TEXT, "+
 					KEY_SECRET + " TEXT, "+
 					KEY_CREATED_TIMESTAMP + " INTEGER, "+
+					KEY_MANUAL + " INTEGER, "+
 					KEY_IP + " TEXT, "+
 					KEY_IP_TIMESTAMP + " INTEGER, "+
 					KEY_PORT + " INTEGER, "+
@@ -148,18 +150,20 @@ public class PeersOpenHelper extends SQLiteOpenHelper {
 			pi.secret = c.getString(8);
 			//			KEY_CREATED_TIMESTAMP, 
 			pi.createdTimestamp = c.getLong(9);
+			//			KEY_MANUAL, 
+			pi.manual = c.getInt(10)!=0;
 			//			KEY_IP,
-			pi.ip = c.getString(10);
+			pi.ip = c.getString(11);
 			//			KEY_IP_TIMESTAMP, 
-			pi.ipTimestamp = c.getLong(11);
+			pi.ipTimestamp = c.getLong(12);
 			//			KEY_PORT, 
-			pi.port = c.getInt(12);
+			pi.port = c.getInt(13);
 			//			KEY_PORT_TIMESTAMP, 
-			pi.portTimestamp = c.getLong(13);
+			pi.portTimestamp = c.getLong(14);
 			//			KEY_TRUSTED, 
-			pi.trusted = c.getInt(14)!=0;
+			pi.trusted = c.getInt(15)!=0;
 			//			KEY_ENABLED
-			pi.enabled = c.getInt(15)!=0;
+			pi.enabled = c.getInt(16)!=0;
 		} catch (Exception e) {
 			Log.e(TAG,"Error converting row to PeerInfo: "+e);
 		}
@@ -187,6 +191,8 @@ public class PeersOpenHelper extends SQLiteOpenHelper {
 		values.put(KEY_SECRET, pi.secret);
 //		KEY_CREATED_TIMESTAMP + " INTEGER, "+
 		values.put(KEY_CREATED_TIMESTAMP, pi.createdTimestamp);
+//		KEY_MANUAL + " INTEGER, "+
+		values.put(KEY_MANUAL, pi.manual ? 1 : 0);
 //		KEY_IP + " TEXT, "+
 		values.put(KEY_IP, pi.ip);
 //		KEY_IP_TIMESTAMP + " INTEGER, "+

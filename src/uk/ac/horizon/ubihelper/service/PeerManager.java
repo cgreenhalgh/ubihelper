@@ -27,6 +27,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.http.impl.cookie.BrowserCompatSpecFactory;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -349,6 +350,7 @@ public class PeerManager {
 		
 		// debug
 		public String detail;
+		public boolean manual;
 		
 		PeerRequestInfo(String instanceName, InetAddress src) {
 			this.instanceName = instanceName;
@@ -379,6 +381,9 @@ public class PeerManager {
 		i.putExtra(EXTRA_SOURCEIP, pi.src.getHostAddress());
 		if (pi.port!=0)
 			i.putExtra(EXTRA_PORT, pi.port);
+		// for pass over to PeerInfo
+		if (pi.id!=null)
+			i.putExtra(EXTRA_ID, pi.id);
 		//Log.d(TAG,"sendBroadcast (peer state)...");
 		service.sendBroadcast(i);
 		//Log.d(TAG,"sendBroadcast done");
@@ -583,39 +588,7 @@ public class PeerManager {
 		}
 		/** called when successfully peered */
 		@Override
-		protected boolean clientHandlePeered(ClientInfo ci) {
-			// convert to PeerInfo
-			PeerInfo pi = new PeerInfo();
-			pi.createdTimestamp = System.currentTimeMillis();
-			pi.info = ci.peerInfo;
-			if (pi.info!=null) {
-				try {
-					if (pi.info.has(KEY_BTMAC))
-						pi.btmac = pi.info.getString(KEY_BTMAC);
-					if (pi.info.has(KEY_WIFIMAC))
-						pi.wifimac = pi.info.getString(KEY_WIFIMAC);
-					if (pi.info.has(KEY_IMEI))
-						pi.imei = pi.info.getString(KEY_IMEI);
-				}
-				catch (JSONException e) {
-					Log.e(TAG,"Unexpected JSON error unpacking peerInfo: "+e);
-				}
-			}
-			pi.secret = protocol.combineSecrets(ci.secret1, ci.secret2);
-			pi.ip = ci.pc.getSocketChannel().socket().getInetAddress().getHostAddress();
-			pi.ipTimestamp = System.currentTimeMillis();
-			pi.port = ci.pc.getSocketChannel().socket().getPort();
-			pi.portTimestamp = pi.ipTimestamp;
-			pi.name = ci.name;
-			pi.id = ci.id;
-			pi.trusted = true;
-			pi.nickname = pi.name;
-			Log.i(TAG,"Converted ClientInfo to PeerInfo");
-			
-			pi.pc = ci.pc;
-			if (pi.pc!=null)
-				pi.pc.attach(pi);
-			
+		protected boolean clientHandlePeered(ClientInfo ci, PeerInfo pi) {
 			clients.remove(ci);
 			addPeer(pi);
 //			peerCache.put(pi.id, pi);
@@ -627,6 +600,13 @@ public class PeerManager {
 			// don't handle more messages as a client
 			return false;
 		}
+		@Override
+		protected void peerHandleFailed(PeerInfo pi) {
+			// TODO Auto-generated method stub
+			Log.d(TAG, "Peer failed: "+pi.id);
+			// TODO fast response?
+		}
+
 		@Override
 		protected JSONObject getInfo() {
 			return PeerManager.this.getInfo();
@@ -944,8 +924,10 @@ public class PeerManager {
 			String name = msg.getString(MessageUtils.KEY_NAME);
 			if (pi.instanceName==null)
 				pi.instanceName = name;
-			else if (!name.equals(pi.instanceName)) 
+			else if (!name.equals(pi.instanceName)) {
 				Log.w(TAG,"resp_peer_nopin has different name: "+name+" vs "+pi.instanceName);
+				pi.instanceName = name;
+			}
 			pi.secret2 = msg.getString(MessageUtils.KEY_SECRET);
 			pi.peerInfo = msg.getJSONObject(MessageUtils.KEY_INFO);
 		} catch (JSONException e) {
@@ -960,7 +942,7 @@ public class PeerManager {
 		peerRequests.remove(pi);
 		Intent bi = new Intent(ACTION_PEER_REQUESTS_CHANGED);
 		service.sendBroadcast(bi);
-		updatePeer(pi);
+		broadcastPeerState(pi);
 		
 		addPeer(pi);
 		
@@ -993,6 +975,7 @@ public class PeerManager {
 		pi.id = preq.id;
 		pi.trusted = preq.state==PeerRequestState.STATE_PEERED;
 		pi.nickname = pi.name;
+		pi.manual = preq.manual;
 		
 		pi.pc = preq.pc;
 		if (pi.pc!=null)
@@ -1052,7 +1035,7 @@ public class PeerManager {
 		peerRequests.remove(pi);
 		Intent bi = new Intent(ACTION_PEER_REQUESTS_CHANGED);
 		service.sendBroadcast(bi);
-		updatePeer(pi);
+		broadcastPeerState(pi);
 		
 		addPeer(pi);
 
@@ -1133,7 +1116,8 @@ public class PeerManager {
 		PeerRequestInfo pi = new PeerRequestInfo(name, host);
 		pi.port = port;
 		pi.state = PeerRequestState.STATE_SRV_FOUND;
-
+		pi.manual = true;
+		
 		peerRequests.add(pi);
 		
 		Intent bi = new Intent(ACTION_PEER_REQUESTS_CHANGED);
@@ -1202,18 +1186,16 @@ public class PeerManager {
 			PeerInfo pi = getPeer(peerId);
 			if (pi==null) {
 				Log.d(TAG,"No peer "+peerId+" in handleStart for "+peerChannelName);
-				return;
-			}
-			if (pi.pc==null) {
+			} else if (pi.pc==null) {
 				Log.d(TAG,"No PeerConnection for "+peerId+" in handleStart for "+peerChannelName);
-				return;
+			} else {
+				// send initial get
+				JSONObject req = getRequest();
+				JSONArray reqs = new JSONArray();
+				reqs.put(req);
+				Log.d(TAG,"Send initial request for "+name);
+				pi.pc.sendMessage(new Message(Message.Type.REQUEST, "GET /ubihelper", null, reqs.toString()));
 			}
-			// send initial get
-			JSONObject req = getRequest();
-			JSONArray reqs = new JSONArray();
-			reqs.put(req);
-			Log.d(TAG,"Send initial request for "+name);
-			pi.pc.sendMessage(new Message(Message.Type.REQUEST, "GET /ubihelper", null, reqs.toString()));
 			checkRemoteRequestTask(peerId);
 		}
 		@Override

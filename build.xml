@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ====================================================================== 
+     6 Mar 2012 08:54:37                                                        
+
+     ubihelper-server    
+     J2SE server compatible with the ubihelper Android application. Uses part of the same code base.
+                   
+     cmg                                                                
+     ====================================================================== -->
+<project name="ubihelper-server" default="default">
+    <description>
+            J2SE server compatible with the ubihelper Android application. Uses part of the same code base.
+    </description>
+
+    <!-- ================================= 
+          target: default              
+         ================================= -->
+    <target name="default" depends="jar" description="J2SE server compatible with the ubihelper Android application.">
+        
+    </target>
+
+	<target name="clean">
+		<delete dir="build"></delete>
+	</target>
+	
+    <!-- - - - - - - - - - - - - - - - - - 
+          target: depends                      
+         - - - - - - - - - - - - - - - - - -->
+    <target name="jar">
+    	<mkdir dir="build"/>
+    	<delete file="ubihelper-server.jar"></delete>
+    	<javac debug="true" destdir="build" srcdir="src" includeantruntime="false" includes="uk/ac/horizon/ubihelper/protocol/**, uk/ac/horizon/ubihelper/j2se/**, uk/ac/horizon/ubihelper/channel/**, org/json/**">
+    	</javac>
+    	<jar basedir="build" destfile="ubihelper-server.jar"></jar>
+    </target>
+
+	<target name="run">
+		<java fork="true" classname="uk.ac.horizon.ubihelper.j2se.Server">
+			<classpath>
+				<pathelement location="ubihelper-server.jar"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="run30303">
+		<java fork="true" classname="uk.ac.horizon.ubihelper.j2se.Server">
+			<classpath>
+				<pathelement location="ubihelper-server.jar"/>
+			</classpath>
+			<arg value="30303"/>
+		</java>
+	</target>
+
+</project>

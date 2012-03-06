@@ -28,6 +28,11 @@ public abstract class ProtocolManager {
 	private SecureRandom srandom;
 	private Random random;
 	private MessageDigest messageDigest;
+	
+	private static final String KEY_IMEI = "imei";
+	private static final String KEY_WIFIMAC = "wifimac";
+	private static final String KEY_BTMAC = "btmac";
+
 
 	public ProtocolManager() {
 		random = new Random(System.currentTimeMillis());
@@ -76,6 +81,12 @@ public abstract class ProtocolManager {
 				ClientInfo ci = (ClientInfo)pc.attachment();
 				logger.info("onFail ClientInfo "+ci);
 				// TODO
+			}
+			else if (pc.attachment() instanceof PeerInfo) {
+				PeerInfo pi = (PeerInfo)pc.attachment();
+				logger.info("onFail PeerInfo "+pi.id);
+				pc.attach(null);
+				pm.peerHandleFailed(pi);
 			}
 		}
 
@@ -250,7 +261,52 @@ public abstract class ProtocolManager {
 
 	
 	/** called when successfully peered */
-	protected abstract boolean clientHandlePeered(ClientInfo ci);
+	protected boolean clientHandlePeered(ClientInfo ci) {
+		// convert to PeerInfo
+		PeerInfo pi = new PeerInfo();
+		pi.createdTimestamp = System.currentTimeMillis();
+		pi.info = ci.peerInfo;
+		if (pi.info!=null) {
+			try {
+				if (pi.info.has(KEY_BTMAC))
+					pi.btmac = pi.info.getString(KEY_BTMAC);
+				if (pi.info.has(KEY_WIFIMAC))
+					pi.wifimac = pi.info.getString(KEY_WIFIMAC);
+				if (pi.info.has(KEY_IMEI))
+					pi.imei = pi.info.getString(KEY_IMEI);
+			}
+			catch (JSONException e) {
+				logger.warning("Unexpected JSON error unpacking peerInfo: "+e);
+			}
+		}
+		pi.secret = combineSecrets(ci.secret1, ci.secret2);
+		pi.ip = ci.pc.getSocketChannel().socket().getInetAddress().getHostAddress();
+		pi.ipTimestamp = System.currentTimeMillis();
+		pi.port = ci.pc.getSocketChannel().socket().getPort();
+		pi.portTimestamp = pi.ipTimestamp;
+		pi.name = ci.name;
+		pi.id = ci.id;
+		pi.trusted = true;
+		pi.nickname = pi.name;
+		logger.info("Converted ClientInfo to PeerInfo");
+
+		pi.pc = ci.pc;
+		if (pi.pc!=null)
+			pi.pc.attach(pi);
+
+		//			peerCache.put(pi.id, pi);
+		//			pi.pc.attach(pi);
+		//
+		//			Intent i = new Intent(ACTION_PEER_REQUESTS_CHANGED);
+		//			service.sendBroadcast(i);
+
+		// don't handle more messages as a client
+		return clientHandlePeered(ci, pi);
+	}
+
+	protected abstract boolean clientHandlePeered(ClientInfo ci, PeerInfo pi);
+	protected abstract void peerHandleFailed(PeerInfo pi);
+
 
 	protected abstract JSONObject getInfo();
 	protected abstract String getName();

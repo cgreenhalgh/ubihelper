@@ -22,6 +22,7 @@ import uk.ac.horizon.ubihelper.dns.DnsUtils;
 import uk.ac.horizon.ubihelper.dns.DnsProtocol.SrvData;
 import uk.ac.horizon.ubihelper.net.PeerConnection;
 import uk.ac.horizon.ubihelper.net.PeerConnectionScheduler;
+import uk.ac.horizon.ubihelper.protocol.PeerInfo;
 import uk.ac.horizon.ubihelper.protocol.ClientInfo;
 import uk.ac.horizon.ubihelper.protocol.ProtocolManager;
 import uk.ac.horizon.ubihelper.protocol.ProtocolManager.ClientConnectionListener;
@@ -58,7 +59,7 @@ public class Server {
 		// any
 		return ni.getInetAddresses().nextElement();
 	}
-	public void init() {
+	public void init(InetAddress address, int port) {
 		protocol = new MyProtocolManager();
 		peerConnectionListener = new ProtocolManager.ClientConnectionListener(protocol);
 		// create channels
@@ -66,7 +67,7 @@ public class Server {
 		try {
 			serverSocketChannel = ServerSocketChannel.open();
 			ServerSocket ss = serverSocketChannel.socket();
-			ss.bind(new InetSocketAddress(InetAddress.getByName("0.0.0.0"),0));
+			ss.bind(new InetSocketAddress(InetAddress.getByName("0.0.0.0"),port));
 			serverPort = ss.getLocalPort();
 			logger.info("Open server socket on port "+serverPort);
 			serverSocketChannel.configureBlocking(false);
@@ -86,7 +87,13 @@ public class Server {
 		}
 		// create and advertise with DnsServer
 		dns = new DnsServer();
-		NetworkInterface ni = DnsClient.getFirstActiveInterface();
+		NetworkInterface ni = null;
+		try {
+			ni = NetworkInterface.getByInetAddress(address);//DnsClient.getFirstActiveInterface();
+		}
+		catch (Exception e) {
+			logger.severe("Could not get NetworkInterface for "+address+": "+e);
+		}
 		dns.setNeworkInterface(ni);
 		InetAddress ip = getInetAddress(ni);
 		logger.info("Binding for multicast to "+ip.getHostAddress());
@@ -134,11 +141,15 @@ public class Server {
 		}
 
 		@Override
-		protected boolean clientHandlePeered(ClientInfo ci) {
-			// ...?
-			logger.info("New peer establised");
-			return false;
+		protected boolean clientHandlePeered(ClientInfo ci, PeerInfo pi) {
+			logger.info("New peer establised: "+pi.id);
+			return true;
 		}
+		
+		protected void peerHandleFailed(PeerInfo pi) {
+			logger.info("Peer failed: "+pi.id);
+		}
+
 
 		@Override
 		protected JSONObject getInfo() {
@@ -166,9 +177,55 @@ public class Server {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		InetAddress bestAddress = null;
+		try {
+			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+			while(interfaces.hasMoreElements()) {
+				NetworkInterface ni = interfaces.nextElement();
+				if(!ni.isUp() || ni.isVirtual() || ni.isLoopback())
+					continue;
+				logger.info("Has interface "+ni.getName()+": "+ni.getDisplayName());
+				Enumeration<InetAddress> as = ni.getInetAddresses();
+				while (as.hasMoreElements()) {
+					InetAddress a = as.nextElement();
+					if (a instanceof Inet4Address) {
+						Inet4Address ip = (Inet4Address)a;
+						logger.info("- IPv4 address "+ip.getHostAddress());
+						if (ip.isSiteLocalAddress()) {
+							logger.info("-- site local!");
+							if (bestAddress==null)
+								bestAddress = ip;
+						}
+						else 
+							bestAddress = ip;
+					}
+				}
+			}
+		}
+		catch (Exception e) {
+			logger.severe("Could not list NetworkInterfaces: "+e);
+			System.exit(-1);
+		}
+		if (bestAddress==null) {
+			logger.severe("Could not find an IP address to bind to - using localhost");
+			try {
+				bestAddress = InetAddress.getLocalHost();
+			} catch (Exception e) {
+				logger.severe("Could not get localhost address: "+e);
+				System.exit(-2);
+			}
+		}
+		int port = 0;
+		if (args.length==1) {
+			try {
+				port = Integer.parseInt(args[0]);
+			} catch (NumberFormatException nfe) {
+				System.err.println("Usage: <server-port>");
+				System.exit(-3);
+			}
+		}
 		Server server = new Server();
-		server.init();
+		server.init(bestAddress, port);
 	}
 
 }
