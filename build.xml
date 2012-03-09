@@ -12,10 +12,17 @@
             J2SE server compatible with the ubihelper Android application. Uses part of the same code base.
     </description>
 
+	<target name="info">
+		<echo>The main thing here is the Android application. 
+Please build that using Eclipse with the Android SDK and plugin - 
+there are no ant build targets for that. Ant is only used to 
+build the (optional) J2SE server(s).</echo>
+	</target>
+	
     <!-- ================================= 
           target: default              
          ================================= -->
-    <target name="default" depends="jar" description="J2SE server compatible with the ubihelper Android application.">
+    <target name="default" depends="info,jar" description="J2SE server compatible with the ubihelper Android application.">
         
     </target>
 
@@ -26,7 +33,7 @@
     <!-- - - - - - - - - - - - - - - - - - 
           target: depends                      
          - - - - - - - - - - - - - - - - - -->
-    <target name="jar">
+    <target name="jar" depends="info">
     	<mkdir dir="build"/>
     	<delete file="ubihelper-server.jar"></delete>
     	<javac debug="true" destdir="build" srcdir="src" includeantruntime="false" includes="uk/ac/horizon/ubihelper/protocol/**, uk/ac/horizon/ubihelper/j2se/**, uk/ac/horizon/ubihelper/channel/**, org/json/**">
