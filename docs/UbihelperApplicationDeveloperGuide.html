@@ -1,12 +1,24 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.0.</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li></ul><h2><a name="Overview"></a>Overview</h2><p>Ubihelper
+<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.1.</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Using_with_AppFurnace">Using With AppFurnace</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li></ul><h2><a name="Overview"></a>Overview</h2><p>Ubihelper
 allows applications running on the phone - such as AppFurnace
 applications - to access additional sensor information, such as
 Bluetooth discovery, wifi networks, etc. A future version will also
 allow access to sensor information from other phones over the network.</p><p>You
 don't necessarily need to understand the details in this guide; as a
 starting point you may be able to copy fragments of Javascript code and
-adapt from there.</p><h2><a name="Channels"></a>Channels</h2><p>The
+adapt from there.</p><h2><a name="Using_with_AppFurnace"></a>Using with AppFurnace</h2><p>To use ubihelper with AppFurnace you must:</p><ol><li>Organise
+your AppFurnace application so that there is one method that can be
+called each time a new value is obtained for a particular sensor</li><li>Copy some standard client code into the code section of your AppFurnace application</li><li>Change some configuration values in this standard code&nbsp; </li><li>Install Ubihelper on the phone and have it running whenever your AppFurnace app is running</li></ol><p>The current version of the standard code is: <a href="appfurnace_simple.js">appfurnace_simple.js</a></p><p>In this code:</p><ul><li><span style="font-family: monospace;">function onChannelValue(name, value)</span> is called whenever a new sensor (channel) value is received; you should edit this function to call your own function(s) to handle sensor value changes.</li><li><span style="font-family: monospace;">var pollInterval = ...</span>
+specifies the interval (in seconds) between checks for new sensor
+values. If you make it shorter then some applications may be more
+responsive. If you make it too short then the application may become
+unresponsive as it is spending most of its time checking for new values.</li><li><span style="font-family: monospace;">var ubihelperQuery = '[{"name":"...","period":...}...]'</span> specifies which sensors (channels) your application wants to be monitor (see <a href="#Channels">Channels</a>).</li><li><span style="font-family: monospace;">var ubihelperUrl = "http://127.0.0.1:8180/ubihelper"</span>
+specifies how to access the ubihelper application; this must match the
+application configuration, but should not normally need to be changed
+(see <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a>)</li></ul><p>Without
+modification the provided javascript will monitor the "time" channel
+(the current system time) and show it as the text of a label or rich
+text widget called "output".</p><p>A version of this application is available as a AppFurnace PIRL: <a href="http://the.appfurnace.com/test/IQbjX/">http://the.appfurnace.com/test/IQbjX/</a> or <a href="images/ubihlper-test-pirl-qrcode.png">QR-Code</a>. Android AppFurnace player is available from the market: <a href="https://market.android.com/details?id=com.calvium.player">https://market.android.com/details?id=com.calvium.player</a> or <a href="images/appfurnace-player-qrcode.png">QR-Code</a></p><h2><a name="Channels"></a>Channels</h2><p>The
 information that the ubihelper service can provide is organised as a
 set of "channels". Each channel has a name and one or more values.
 Depending on what the channel represents the value may be constant or
@@ -46,4 +58,7 @@ to retrieve any available values.</p><h3>Testing the Server</h3><p>From
 the main preferences view, the option menu "Test" opens a simple test
 view which till post a request to the local server and print the
 response, e.g. (after pressing "Test Http" a couple of times on a real
-device):</p><p><img style="width: 360px; height: 640px;" alt="test view" src="images/test-view.png"></p><h2><a name="Using_the_Emulator"></a>Using the Emulator</h2><p>At present the ubihelper application can be run in an Android emulator, but will not return any sensor values.&nbsp;</p><p>It is intended to provide some Javascript examples to support initial application development (e.g. in AppFurnace).&nbsp;</p><p>In the interrim testing can only be done on a real device. </p></body></html>
+device):</p><p><img style="width: 360px; height: 640px;" alt="test view" src="images/test-view.png"></p><h2><a name="Using_the_Emulator"></a>Using the Emulator</h2><p>At present the ubihelper application can be run in an Android emulator, but will not return any sensor values.&nbsp;</p><p>Using the provided client code in AppFurnace (see <a href="#Using_with_AppFurnace">above</a>),
+when the AppFurnace application is previewed in the web editor it will
+open an additional window which you can use to pass sensor values to
+the running application in order to simulate sensor input:</p><img style="width: 366px; height: 314px;" alt="appfurnace sensor simulator" src="images/sensor-simulator.png">&nbsp;&nbsp; <br>In future version it is intended to allow replaying of sensor logs from real devices.</body></html>
