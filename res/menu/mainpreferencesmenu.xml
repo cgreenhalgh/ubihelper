@@ -2,6 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
     <item android:id="@+id/wifistatus_option" android:checked="false" android:title="@string/wifistatus_option_title" android:checkable="false" android:enabled="true" android:menuCategory="container" android:visible="true"></item>
     <item android:id="@+id/channels_option" android:enabled="true" android:title="List Channels" android:titleCondensed="Channels"></item>
+    <item android:id="@+id/about_option" android:titleCondensed="About" android:menuCategory="secondary" android:title="About" android:enabled="true"></item>
+    <item android:id="@+id/test_option" android:titleCondensed="Test" android:menuCategory="secondary" android:title="Test" android:enabled="true"></item>
     
 
 </menu>

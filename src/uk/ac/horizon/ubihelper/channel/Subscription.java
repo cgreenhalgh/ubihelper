@@ -31,6 +31,12 @@ public abstract class Subscription {
 		this.channelName = channelName;
 	}
 
+	public Subscription(String channelName, String subscriptionId) {
+		super();
+		this.channelName = channelName;
+		this.id = subscriptionId;
+	}
+
 	/** update metadata */
 	public synchronized void updateConfiguration(double period, double minInterval, double timeout) {
 		this.period = period;

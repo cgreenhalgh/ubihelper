@@ -23,9 +23,10 @@ import android.widget.Button;
 import android.widget.TextView;
 
 /** dummy activity */
-public class UbihelperActivity extends Activity {
+public class TestActivity extends Activity {
 	
 	private Handler mHandler;
+	private TextView text;
 	
     /** Called when the activity is first created. */
     @Override
@@ -33,6 +34,7 @@ public class UbihelperActivity extends Activity {
         super.onCreate(savedInstanceState);
         mHandler = new Handler();
         setContentView(R.layout.main);
+        text = (TextView)findViewById(R.id.test_text);
         Button test = (Button)findViewById(R.id.test_button);
         test.setOnClickListener(new OnClickListener() {
 			public void onClick(View arg0) {
@@ -45,35 +47,46 @@ public class UbihelperActivity extends Activity {
         });
     }
 
+    private void setText(final String t) {
+		mHandler.post(new Runnable() {
+			public void run() {
+				text.setText(t);
+			}				
+		});    	
+    }
+    private void append(final String t) {
+		mHandler.post(new Runnable() {
+			public void run() {
+				text.append(t);
+			}				
+		});    	
+    }
 	protected void doTest() {
 		DefaultHttpClient httpClient = new DefaultHttpClient();
-	    HttpPost httppost = new HttpPost("http://127.0.0.1:8180/ubihelper");
+		String url= "http://127.0.0.1:8180/ubihelper";
+	    HttpPost httppost = new HttpPost(url);
+	    String request = "[{\"name\":\"magnetic\",\"period\":0.5,\"count\":1,\"timeout\":20},"+
+				"{\"name\":\"accelerometer\",\"period\":0.5,\"count\":1,\"timeout\":20}]";
+	    setText("POST "+url+"\n"+request);
 	    try {
-			httppost.setEntity(new StringEntity(
-					"[{\"name\":\"magnetic\",\"period\":0.5,\"count\":1,\"timeout\":20},"+
-					"{\"name\":\"accelerometer\",\"period\":0.5,\"count\":1,\"timeout\":20}]"
-					, "UTF-8"));
+			httppost.setEntity(new StringEntity(request, "UTF-8"));
 			HttpResponse response = httpClient.execute(httppost);
 			final int status = response.getStatusLine().getStatusCode();
 			final String message = response.getStatusLine().getReasonPhrase();
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			response.getEntity().writeTo(baos);
+			
 			final String resp = baos.toString("UTF-8");
-			mHandler.post(new Runnable() {
-				public void run() {
-					TextView text = (TextView)findViewById(R.id.test_text);
-					text.setText("Got "+status+" ("+message+"): "+resp);
-				}				
-			});
+			append("\nGot "+status+" ("+message+"): "+resp);
 		} catch (ClientProtocolException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			append("\nError: "+e);
 		} catch (UnsupportedEncodingException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
+			append("\nError: "+e1);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			append("\nError: "+e);
 		}
 	}
 }

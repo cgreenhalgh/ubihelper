@@ -15,8 +15,8 @@ public class PullSubscription extends Subscription {
 	private int count = 1;
 	private LinkedList<JSONObject> values = new LinkedList<JSONObject>();
 
-	public PullSubscription(String channelName, int count) {
-		super(channelName);
+	public PullSubscription(String channelName, String subscriptionId, int count) {
+		super(channelName, subscriptionId);
 	}
 
 	/**
@@ -42,7 +42,6 @@ public class PullSubscription extends Subscription {
 	/**
 	 * @return the values
 	 */
-	@SuppressWarnings("unchecked")
 	public synchronized LinkedList<JSONObject> takeValues() {
 		LinkedList<JSONObject> oldValues = values;
 		values = new LinkedList<JSONObject>();

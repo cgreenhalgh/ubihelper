@@ -37,13 +37,15 @@
         </activity>
         
         <activity
-            android:name=".ui.UbihelperActivity"
+            android:name=".ui.TestActivity"
             android:label="@string/test_app_name" >
-            <intent-filter>
+<!--
+	 		<intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+ -->            
+         </activity>
         
         <service android:exported="false" android:name=".service.Service" android:enabled="true" android:label="Ubihelper Service"></service>
         <activity android:enabled="true" android:name=".ui.WifiStatusActivity"></activity>
@@ -62,6 +64,7 @@
         <activity android:enabled="true" android:name=".ui.ChannelListActivity"></activity>
         <activity android:enabled="true" android:name=".ui.ChannelPeerListActivity"></activity>
         <activity android:enabled="true" android:name=".ui.PeerInfoActivity"></activity>
+        <activity android:enabled="true" android:name=".ui.AboutActivity"></activity>
         </application>
 
 </manifest>

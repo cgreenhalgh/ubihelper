@@ -134,7 +134,7 @@ public class ChannelManager implements ChannelListener {
 	}
 	public synchronized Subscription findSubscription(String name, String id) {
 		for (Subscription s : subscriptions)
-			if (s.getChannelName().equals(name) && s.getId().equals(id))
+			if (s.getChannelName().equals(name) && (s.getId()==id || (s.getId()!=null && s.getId().equals(id))))
 				return s;
 		return null;
 	}

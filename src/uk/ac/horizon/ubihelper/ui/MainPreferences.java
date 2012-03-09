@@ -130,6 +130,18 @@ public class MainPreferences extends PreferenceActivity {
 			startActivity(i);
 			return true;
 		}
+		case R.id.about_option:
+		{
+			Intent i  = new Intent(this, AboutActivity.class); 
+			startActivity(i);
+			return true;
+		}
+		case R.id.test_option:
+		{
+			Intent i  = new Intent(this, TestActivity.class); 
+			startActivity(i);
+			return true;
+		}
 		default:
 			return super.onOptionsItemSelected(item);
 		}

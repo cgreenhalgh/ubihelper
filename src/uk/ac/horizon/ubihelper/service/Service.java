@@ -327,7 +327,9 @@ public class Service extends android.app.Service {
 				catch (Exception e) {
 					status = 500;
 					message = "Internal error: "+e.getMessage();
+					e.printStackTrace();
 				}
+				Log.d(TAG,"handled request, status="+status+", message="+message+" ("+body+" -> "+response+")");
 				try {
 					if (continuation!=null)
 						continuation.done(status, message, response);
@@ -367,16 +369,19 @@ public class Service extends android.app.Service {
 				Subscription s = channelManager.findSubscription(name, HTTP_SUBSCRIPTION_ID);
 				PullSubscription ps = null;
 				if (s==null) {
-					ps = new PullSubscription(name, count);
+					ps = new PullSubscription(name, HTTP_SUBSCRIPTION_ID, count);
 					channelManager.addSubscription(ps);
 				}
 				else if (s instanceof PullSubscription) {
 					ps = ((PullSubscription)s);
 					ps.setCount(count);
 				}
-				else 
+				else {
 					Log.w(TAG,"HTTP update count on subscription "+name+" - not PullSubscription: "+s);
-				s.updateConfiguration(period, period/2, timeout);
+					throw new HttpError(500, "There was a problem with the subscriptions (tell the ubihelper developer)");
+				}
+
+				ps.updateConfiguration(period, period/2, timeout);
 				channelManager.refreshChannel(name);
 				
 				JSONArray values = new JSONArray();

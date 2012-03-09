@@ -32,8 +32,10 @@
     <PreferenceCategory
             android:title="@string/wifidisc_preferences"
             android:dependency="run_service"
+            android:enabled="false"
             >
-
+            <!-- release?! - enable -->
+        
         <CheckBoxPreference
                 android:key="wifidisc"
                 android:title="@string/wifidisc_preference_title"

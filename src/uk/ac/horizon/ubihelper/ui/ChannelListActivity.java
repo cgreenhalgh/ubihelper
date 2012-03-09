@@ -3,6 +3,9 @@
  */
 package uk.ac.horizon.ubihelper.ui;
 
+import java.util.Collections;
+import java.util.TreeSet;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -84,8 +87,11 @@ public class ChannelListActivity extends ChannelViewActivity {
 				try {
 					JSONObject val = new JSONObject(value);
 					JSONArray names = val.getJSONArray(ChannelManager.KEY_NAMES);
+					TreeSet<String> nameset = new TreeSet<String>();
 					for (int i=0; i<names.length(); i++) 
-						listAdapter.add(names.getString(i));
+						nameset.add(names.getString(i));
+					for (String name : nameset) 
+						listAdapter.add(name);
 				} catch (JSONException e) {
 					Log.w(TAG,"Parsing channels value "+value+": "+e);
 				}
