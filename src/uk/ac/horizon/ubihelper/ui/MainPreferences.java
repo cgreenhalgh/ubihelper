@@ -179,39 +179,29 @@ public class MainPreferences extends PreferenceActivity {
 						Log.d(TAG,key+" changed to "+value);
 						if (httpPortPref!=null)
 							httpPortPref.setSummary(value);
-						if (mService!=null)
-							mService.sharedPreferenceChanged(prefs, key);
 					}
 					else if (HTTP_PATH_PREFERENCE.equals(key)) {
 						String value = prefs.getString(key, "undefined");
 						Log.d(TAG,key+" changed to "+value);
 						if (httpPathPref!=null)
 							httpPathPref.setSummary(value);
-						if (mService!=null)
-							mService.sharedPreferenceChanged(prefs, key);
 					}
 					else if (WIFIDISC_PREFERENCE.equals(key)) {
 						Boolean discoverable = prefs.getBoolean(key, false);
 						Log.d(TAG,key+" changed to "+discoverable);
 						if (discoverable)
 							checkWifiEnabled();
-						if (mService!=null)
-							mService.sharedPreferenceChanged(prefs, key);
 					}
 					else if (WIFIDISC_NAME_PREFERENCE.equals(key)) {
 						String value = prefs.getString(key, "undefined");
 						Log.d(TAG,key+" changed to "+value);
 						if (wifiNamePref!=null)
 							wifiNamePref.setSummary(value);
-						if (mService!=null)
-							mService.sharedPreferenceChanged(prefs, key);
 						broadcastNameChanged(value);
 					}
 					else
 					{
 						Log.d(TAG,"Preference "+key+" changed...");
-						if (mService!=null)
-							mService.sharedPreferenceChanged(prefs, key);
 					}
 				}
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+    <PreferenceCategory android:title="General">
+        <EditTextPreference android:key="log_period" android:title="Log period" android:summary="(seconds)" android:defaultValue="0.2"/>
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Files">
+        <Preference android:key="log_directory" android:title="Directory" android:enabled="false"/>
+        <EditTextPreference android:key="log_file_prefix" android:title="Filename prefix" android:defaultValue="log"/>
+        <EditTextPreference android:key="log_max_file_size" android:title="Maximum File Size" android:defaultValue="200000"/>
+        <EditTextPreference android:key="log_max_cache_size" android:title="Maximum Cache Size" android:defaultValue="10000000"/>
+        <CheckBoxPreference android:key="log_delete_old_files" android:title="Delete old files" android:summary="delete old files when space is low" android:defaultValue="true"/>
+        <Preference android:summary="View current log files" android:key="log_files" android:title="Files" android:enabled="false"/>
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Channels">
+        <CheckBoxPreference android:key="log_all_channels" android:title="Log all channels" android:defaultValue="false"/>
+        <Preference android:summary="Configure which channels to log" 
+            android:key="log_channels" android:title="Individual channels" android:enabled="false"/>
+    </PreferenceCategory>
+    
+
+</PreferenceScreen>

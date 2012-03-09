@@ -12,6 +12,27 @@
     </PreferenceCategory>
     
     <PreferenceCategory
+            android:title="Logging" 
+            android:dependency="run_service"
+            >
+
+		<CheckBoxPreference 
+		    android:key="log"
+		    android:title="Log to file" 
+		    android:defaultValue="false"
+		    android:enabled="false"
+		    />
+		
+ 		<Preference 
+ 		    android:title="Configure logging" 
+ 		    >
+ 			<intent android:action="uk.ac.horizon.ubihelper.CONFIGURE_LOGGING" />
+ 		</Preference>
+ 	
+				
+		</PreferenceCategory>
+    
+    <PreferenceCategory
             android:title="@string/http_preferences" 
             >
 

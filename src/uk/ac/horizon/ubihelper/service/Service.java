@@ -48,6 +48,7 @@ import uk.ac.horizon.ubihelper.service.channel.LocationChannel;
 import uk.ac.horizon.ubihelper.service.channel.SensorChannel;
 import uk.ac.horizon.ubihelper.service.channel.TimeChannel;
 import uk.ac.horizon.ubihelper.service.channel.WifiScannerChannel;
+import uk.ac.horizon.ubihelper.ui.LoggingPreferences;
 import uk.ac.horizon.ubihelper.ui.MainPreferences;
 
 import android.app.Notification;
@@ -57,6 +58,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.net.wifi.WifiInfo;
@@ -92,7 +94,8 @@ public class Service extends android.app.Service {
 	private TelephonyManager telephony;
 	private String imei;
 	private ChannelManager channelManager;
-
+	private LogManager logManager;
+	
 	@Override
 	public void onCreate() {
 		// One-time set-up...
@@ -208,7 +211,13 @@ public class Service extends android.app.Service {
 		telephony = (TelephonyManager)getSystemService(TELEPHONY_SERVICE);
 		if (telephony!=null)
 			imei = telephony.getDeviceId();
+	
+		logManager = new LogManager(this, channelManager);
+		logManager.checkPreferences();
 		
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		prefs.registerOnSharedPreferenceChangeListener(onRunChangeListener);
+
 		Log.d(TAG,"onCreate() finished");
 	}
 	public static boolean isEmulator() {
@@ -265,6 +274,8 @@ public class Service extends android.app.Service {
 		// tidy up notification
 		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancel(RUNNING_ID);	
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		prefs.unregisterOnSharedPreferenceChangeListener(onRunChangeListener);		
 		if (peerManager!=null) {
 			peerManager.close();
 			peerManager = null;
@@ -280,6 +291,10 @@ public class Service extends android.app.Service {
 		if (channelManager!=null) {
 			channelManager.close();
 			channelManager = null;
+		}
+		if (logManager!=null) {
+			logManager.close();
+			logManager = null;
 		}
 	}
 
@@ -307,21 +322,26 @@ public class Service extends android.app.Service {
 		}
 	}
 	
-	/** public API - preference changed */
-	public void sharedPreferenceChanged(SharedPreferences prefs,
-			String key) {
-		Log.d(TAG, "onSharedPreferenceChanged("+key+")");
-		if (MainPreferences.HTTP_PORT_PREFERENCE.equals(key)) {
-			// update port
-			httpPort = getPort();
-			if (httpListener!=null)
-				httpListener.setPort(httpPort);
+	/** preference change listener */
+	private final OnSharedPreferenceChangeListener onRunChangeListener = 
+			new OnSharedPreferenceChangeListener() {
+
+				public void onSharedPreferenceChanged(SharedPreferences prefs,
+						String key) {
+			Log.d(TAG, "onSharedPreferenceChanged("+key+")");
+			if (MainPreferences.HTTP_PORT_PREFERENCE.equals(key)) {
+				// update port
+				httpPort = getPort();
+				if (httpListener!=null)
+					httpListener.setPort(httpPort);
+			}
+			else if (MainPreferences.WIFIDISC_PREFERENCE.equals(key)) {
+				wifiDiscoverable = getWifiDiscoverable();
+				wifiDiscoveryManager.setEnabled(wifiDiscoverable);
+			}
 		}
-		else if (MainPreferences.WIFIDISC_PREFERENCE.equals(key)) {
-			wifiDiscoverable = getWifiDiscoverable();
-			wifiDiscoveryManager.setEnabled(wifiDiscoverable);
-		}
-	}
+	};
+	
 	/** public API - get PeerManager */
 	public PeerManager getPeerManager() {
 		return peerManager;

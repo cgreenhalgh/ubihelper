@@ -65,6 +65,13 @@
         <activity android:enabled="true" android:name=".ui.ChannelPeerListActivity"></activity>
         <activity android:enabled="true" android:name=".ui.PeerInfoActivity"></activity>
         <activity android:enabled="true" android:name=".ui.AboutActivity"></activity>
+        <activity android:name=".ui.LoggingPreferences" android:enabled="true">
+            <intent-filter >
+                <action android:name="uk.ac.horizon.ubihelper.CONFIGURE_LOGGING"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <activity android:enabled="true" android:name=".ui.LogChannelListActivity"></activity>
         </application>
 
 </manifest>
