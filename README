@@ -2,4 +2,12 @@ ubihelper - an android background service to provide access to sensors
 and maybe networking from AppFurnace and similar PhoneGap browser-style applications
 i.e. over local HTTP.
 
-Chris Greenhalgh, University of Nottingham, 2012
+Chris Greenhalgh, The University of Nottingham, 2012
+
+See LICENSE.
+See docs/index.html
+
+Versions:
+
+	1	Support access via embedded HTTP server to local sensors, including gps, cell position, 
+	    wifi scanning, bluetooth discovery, accelerometer, compass, etc.

@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.0.</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li></ul><h2><a name="Overview"></a>Overview</h2><p>Ubihelper
+allows applications running on the phone - such as AppFurnace
+applications - to access additional sensor information, such as
+Bluetooth discovery, wifi networks, etc. A future version will also
+allow access to sensor information from other phones over the network.</p><p>You
+don't necessarily need to understand the details in this guide; as a
+starting point you may be able to copy fragments of Javascript code and
+adapt from there.</p><h2><a name="Channels"></a>Channels</h2><p>The
+information that the ubihelper service can provide is organised as a
+set of "channels". Each channel has a name and one or more values.
+Depending on what the channel represents the value may be constant or
+may change over time (e.g. a sequence of readings from a sensor).&nbsp;</p><p>Sensor
+channels will have a minimum period between new values (e.g. 1 second
+for GPS, 1-2 seconds for a Wifi scan, about 12 seconds for a Bluetooth
+scan). But your application can request updates at another rate.</p><p>The
+type of value returned by a channel depends on the channel, i.e.
+different channel may return completely different kinds of values.</p><p>The
+available channels may vary from device to device. If a channel does
+not exist on a particular device then no values will be returned from
+it. Some of the standard channel names are:</p><ul><li>accelerometer</li><li>bluetooth - scans for discoverable Bluetooth devices</li><li>cell.location - GSM/3G current cell ID</li><li>channels - list of current known channels</li><li>gpsstatus - status of GPS, e.g. available satellites</li><li>gyro</li><li>location.gps - GPS location</li><li>location.network - location based on Cellular and Wifi networks</li><li>magnetic</li><li>pressure</li><li>proximity - the proximity sensor that turns off the mobile's screen when held to your ear for a phone call</li><li>wifi - scans for Wifi access points in range</li></ul><p>From
+the ubihelper preferences screen, the option menu "Channels" gives a
+list of known channels, which may be viewed (the default update period
+for these views is 0.25 seconds, i.e. 4Hz):</p><img style="width: 240px; height: 427px;" alt="channels list" src="images/channels-list.png"> <br><p>For example, the "accelerometer" channel:</p><img style="width: 240px; height: 427px;" alt="accelerometer channel" src="images/accelerometer-channel.png">&nbsp; <br><h2><a name="HTTP_Server"></a>HTTP Server</h2><p>Ubihelper includes a simple HTTP (web) server, which other applications use to get information from the ubihelper service.&nbsp;</p><h3>HTTP Server configuration</h3><p>The port that the server runs on defaults to "8080", and can be configured in the ubihelper preferences:</p><p> <img style="width: 240px; height: 427px;" alt="preferences" src="images/preferences-disabled.png"></p><p>When
+requesting informatioon from the ubihelper server a specific URL path
+must also be used. By default this is "/ubihelper", but this can also
+be changed in the ubihelper preferences.&nbsp;</p><p>Note that if you
+change the HTTP server path&nbsp;then any users of you application will
+need to configure the same path before running your application.</p><h3>HTTP Server Protocol</h3><p>The
+ubihelper HTTP server expects to receive a POST to the URL
+http://localhost:&lt;port&gt;/&lt;path&gt; (by default
+http://localhost:8180/ubihelper). The body of this post should be a
+JSON(UTF-8 encoded) array of objects, with the following properties: </p><ul><li>name - the channel name (string) from which information is requested (see above)</li><li>period
+- the desired sampling period (floating point number, seconds), i.e.
+the preferred time between samples of a changing value. Optional,
+defaults to 1 (second)</li><li>timeout - how long the server should
+continue to collect/hold data for the application (floating point
+number, seconds). Optional, defaults to 30 (seconds)</li><li>count - how many values the server hold for the application (integer). Optional, defaults to 1, i.e. most recent value only.</li></ul><p>For
+example, to request updates every half second from the accelerometer,
+waiting up to 20 seconds for the application to collect the data, and
+keeping only the most recent value, the application would POST:</p><ul><li>[{"name":"accelerometer", "period":0.5, "timeout":20, "count":1}]</li></ul><p>&nbsp;The server returns a JSON array of objects with the following properties:</p><ul><li>name - the channel name (string)</li><li>values - a JSON array of values that were waiting for the application on that channel.</li></ul><p>The value(s) returned are channel-dependent (see below). For example, the above request might return:</p><ul><li>[{"name":"accelerometer", "values":[{"timestamp":6512246,"accuracy":3,"values":[-0.3826,-0.6923,9.7710]}]}]</li></ul><p>Note:
+most channels only start to collect information when the first request
+is made by the application. The application should then wait
+approximately the requested period and then poll the ubihelper server
+to retrieve any available values.</p><h3>Testing the Server</h3><p>From
+the main preferences view, the option menu "Test" opens a simple test
+view which till post a request to the local server and print the
+response, e.g. (after pressing "Test Http" a couple of times on a real
+device):</p><p><img style="width: 360px; height: 640px;" alt="test view" src="images/test-view.png"></p><h2><a name="Using_the_Emulator"></a>Using the Emulator</h2><p>At present the ubihelper application can be run in an Android emulator, but will not return any sensor values.&nbsp;</p><p>It is intended to provide some Javascript examples to support initial application development (e.g. in AppFurnace).&nbsp;</p><p>In the interrim testing can only be done on a real device. </p></body></html>
