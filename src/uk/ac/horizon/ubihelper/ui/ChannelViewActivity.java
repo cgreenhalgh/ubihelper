@@ -43,10 +43,15 @@ public abstract class ChannelViewActivity extends Activity {
 	private Service service;
 	protected double period = 1;
 
+	/** default uses Intent EXTRA_NAME */
+	protected String getChannelName() {
+		return getIntent().getExtras().getString(BroadcastIntentSubscription.EXTRA_NAME);
+	}
+	
 	@Override
 	protected void onStart() {
 		super.onStart();
-		channelName = getIntent().getExtras().getString(BroadcastIntentSubscription.EXTRA_NAME);
+		channelName = getChannelName();
 		refresh(null);
 		IntentFilter peerChangeFilter = new IntentFilter(BroadcastIntentSubscription.ACTION_CHANNEL_NEW_VALUE);
 		registerReceiver(peerChangeListener, peerChangeFilter);

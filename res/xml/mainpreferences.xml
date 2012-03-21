@@ -18,6 +18,7 @@
 		<CheckBoxPreference 
 		    android:key="log"
 		    android:title="Log to file" 
+		    android:summary="Log selected channels while service runs"
 		    android:defaultValue="false"
 		    />
 		
@@ -27,7 +28,14 @@
  			<intent android:action="uk.ac.horizon.ubihelper.CONFIGURE_LOGGING" />
  		</Preference>
  	
-				
+ 		<Preference 
+ 		    android:title="Log channels" 
+            android:dependency="run_service"
+ 		    >
+ 			<intent android:action="uk.ac.horizon.ubihelper.CONFIGURE_LOG_CHANNELS" />
+ 		</Preference>
+ 	
+ 						
 		</PreferenceCategory>
     
     <PreferenceCategory

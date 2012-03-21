@@ -69,16 +69,7 @@ public class LoggingPreferences extends PreferenceActivity {
         logMaxCacheSize.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
         updateLogMaxCacheSizeSummary();
         //logDirectory = getPreferenceScreen().findPreference(LOG_DIRECTORY);
-        //updateLogDirectory();
-        Preference logChannels = getPreferenceScreen().findPreference(LogManager.LOG_CHANNELS);
-        logChannels.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			public boolean onPreferenceClick(Preference p) {
-				Intent i = LoggingChannelListActivity.getStartActivityIntent(LoggingPreferences.this);
-				startActivity(i);
-				return true;
-			}
-        });
-        
+        //updateLogDirectory();        
 	}
 
 //	private void updateLogDirectory() {
@@ -96,10 +87,10 @@ public class LoggingPreferences extends PreferenceActivity {
 		logFilePrefix.setSummary(logFilePrefix.getText());
 	}
 	private void updateLogMaxFileSizeSummary() {
-		logMaxFileSize.setSummary(logMaxFileSize.getText()+" byes");
+		logMaxFileSize.setSummary(logMaxFileSize.getText()+" bytes");
 	}
 	private void updateLogMaxCacheSizeSummary() {
-		logMaxCacheSize.setSummary(logMaxCacheSize.getText()+" byes");
+		logMaxCacheSize.setSummary(logMaxCacheSize.getText()+" bytes");
 	}
 
 	/** preference change listener */

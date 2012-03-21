@@ -60,19 +60,23 @@ public class LoggingChannelListActivity extends ChannelViewActivity {
 	
 	public static Intent getStartActivityIntent(Context context) {
 		Intent i = new Intent(context, LoggingChannelListActivity.class);
-		i.putExtra(BroadcastIntentSubscription.EXTRA_NAME, ChannelManager.CHANNEL_CHANNELS);
+	//	i.putExtra(BroadcastIntentSubscription.EXTRA_NAME, ChannelManager.CHANNEL_CHANNELS);
 		return i;
 	}
 	
+	@Override
+	protected String getChannelName() {
+		return ChannelManager.CHANNEL_CHANNELS;
+	}
+
 	/* (non-Javadoc)
 	 * @see android.app.Activity#onCreate(android.os.Bundle)
 	 */
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setTitle(getIntent().getExtras().getString(BroadcastIntentSubscription.EXTRA_NAME));
-		setContentView(R.layout.channel_list);
-		listView = (ListView)findViewById(R.id.channel_list);
+		setContentView(R.layout.log_channel_list);
+		listView = (ListView)findViewById(R.id.log_channel_list);
 		
 		prefs = PreferenceManager.getDefaultSharedPreferences(this);
 

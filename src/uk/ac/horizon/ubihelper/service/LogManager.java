@@ -73,7 +73,7 @@ public class LogManager {
 	public static final String FILES_DIR = "logs";
 	private static final int DEFAULT_PERIOD = 1000;
 	private static final double MIN_PERIOD_CHANGE = 0.001;
-	private static final long MIN_NEW_FILE_SIZE = 100000;
+	public static final int MIN_NEW_FILE_SIZE = 10000;
 	private static final int BUFFER_SIZE = 10000;
 	private static final int DEFAULT_FLUSH_DELAY = 1000;
 
@@ -163,10 +163,16 @@ public class LogManager {
 		return val;
 	}
 	private int getMaxFileSize() {
-		return getIntPreference(LOG_MAX_FILE_SIZE, 0);
+		int size = getIntPreference(LOG_MAX_FILE_SIZE, 0);
+		if (size<MIN_NEW_FILE_SIZE)
+			size = MIN_NEW_FILE_SIZE;
+		return size;
 	}
 	private int getMaxCacheSize() {
-		return getIntPreference(LOG_MAX_CACHE_SIZE, 0);
+		int size = getIntPreference(LOG_MAX_CACHE_SIZE, 0);
+		if (size<MIN_NEW_FILE_SIZE)
+			size = MIN_NEW_FILE_SIZE;
+		return size;
 	}
 	// called from Service when prefs changed
 	public void checkPreferences(String changed) {
@@ -238,7 +244,6 @@ public class LogManager {
 
 	private synchronized void checkSubscriptions() {
 		float period = getLogPeriod();
-		// TODO Auto-generated method stub
 		String cns[] = getChannels();
 		TreeSet<String> ecns = new TreeSet<String>();
 		ecns.addAll(subscriptions.keySet());
@@ -307,7 +312,6 @@ public class LogManager {
 			Log.d(TAG,"ignore logValue (not logging) "+channelName+"="+value);
 			return;
 		}
-		// TODO Auto-generated method stub
 		Log.d(TAG,"logValue "+channelName+"="+value);
 
 		// marshall
@@ -320,7 +324,6 @@ public class LogManager {
 			lval.put("value", value);
 			data = lval.toString().getBytes("UTF-8");
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			Log.e(TAG,"marshalling log value: "+e);
 			return;
 		}		
@@ -415,6 +418,8 @@ public class LogManager {
 		try {
 			OutputStream os = new FileOutputStream(currentLogFile);
 			currentLogStream = new BufferedOutputStream(os, BUFFER_SIZE);
+			cacheFiles.add(currentLogFile);
+			currentFileLength = 0;
 		}
 		catch (Exception e) {
 			Log.w(TAG,"Error opening log file "+currentLogFile+": "+e);
@@ -439,11 +444,12 @@ public class LogManager {
 	private static SimpleDateFormat logDateFormat = new SimpleDateFormat("yyyy-MM-dd_HHmmss-SSS");
 	
 	private void signalError(String error) {
+		// force re-check...
+		currentLogDir = null;
 		if (errorNotificationVisible && error.equals(errorNotificationText))
 			return;
 		errorNotificationText = error;
 		
-		// TODO Auto-generated method stub
 		int icon = R.drawable.log_error_notification_icon;
 		CharSequence tickerText = error;
 		long when = System.currentTimeMillis();
