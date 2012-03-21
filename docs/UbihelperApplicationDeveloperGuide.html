@@ -1,5 +1,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.1.</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Using_with_AppFurnace">Using With AppFurnace</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li></ul><h2><a name="Overview"></a>Overview</h2><p>Ubihelper
+<html><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.2 (updated 2012-03-12).</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Using_with_AppFurnace">Using With AppFurnace</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li>
+  <li><a href="#Logging_Sensor_Data">Logging Sensor Data</a><br>
+  </li>
+</ul><h2><a name="Overview"></a>Overview</h2><p>Ubihelper
 allows applications running on the phone - such as AppFurnace
 applications - to access additional sensor information, such as
 Bluetooth discovery, wifi networks, etc. A future version will also
@@ -8,7 +12,10 @@ don't necessarily need to understand the details in this guide; as a
 starting point you may be able to copy fragments of Javascript code and
 adapt from there.</p><h2><a name="Using_with_AppFurnace"></a>Using with AppFurnace</h2><p>To use ubihelper with AppFurnace you must:</p><ol><li>Organise
 your AppFurnace application so that there is one method that can be
-called each time a new value is obtained for a particular sensor</li><li>Copy some standard client code into the code section of your AppFurnace application</li><li>Change some configuration values in this standard code&nbsp; </li><li>Install Ubihelper on the phone and have it running whenever your AppFurnace app is running</li></ol><p>The current version of the standard code is: <a href="appfurnace_simple.js">appfurnace_simple.js</a></p><p>In this code:</p><ul><li><span style="font-family: monospace;">function onChannelValue(name, value)</span> is called whenever a new sensor (channel) value is received; you should edit this function to call your own function(s) to handle sensor value changes.</li><li><span style="font-family: monospace;">var pollInterval = ...</span>
+called each time a new value is obtained for a particular sensor</li><li>Copy some standard client code into the code section of your AppFurnace application</li><li>Change some configuration values in this standard code&nbsp; </li><li>Install Ubihelper on the phone and have it running whenever your AppFurnace app is running</li></ol><p>The current version of the standard code is: <a href="appfurnace_simple.js">appfurnace_simple.js</a></p><p>In this code:</p><ul><li><span style="font-family: monospace;">function onChannelValue(name, value)</span>
+is called whenever a new sensor (channel) value is received; you should
+edit this function to call your own function(s) to handle sensor value
+changes.</li><li><span style="font-family: monospace;">var pollInterval = ...</span>
 specifies the interval (in seconds) between checks for new sensor
 values. If you make it shorter then some applications may be more
 responsive. If you make it too short then the application may become
@@ -33,7 +40,10 @@ not exist on a particular device then no values will be returned from
 it. Some of the standard channel names are:</p><ul><li>accelerometer</li><li>bluetooth - scans for discoverable Bluetooth devices</li><li>cell.location - GSM/3G current cell ID</li><li>channels - list of current known channels</li><li>gpsstatus - status of GPS, e.g. available satellites</li><li>gyro</li><li>location.gps - GPS location</li><li>location.network - location based on Cellular and Wifi networks</li><li>magnetic</li><li>pressure</li><li>proximity - the proximity sensor that turns off the mobile's screen when held to your ear for a phone call</li><li>wifi - scans for Wifi access points in range</li></ul><p>From
 the ubihelper preferences screen, the option menu "Channels" gives a
 list of known channels, which may be viewed (the default update period
-for these views is 0.25 seconds, i.e. 4Hz):</p><img style="width: 240px; height: 427px;" alt="channels list" src="images/channels-list.png"> <br><p>For example, the "accelerometer" channel:</p><img style="width: 240px; height: 427px;" alt="accelerometer channel" src="images/accelerometer-channel.png">&nbsp; <br><h2><a name="HTTP_Server"></a>HTTP Server</h2><p>Ubihelper includes a simple HTTP (web) server, which other applications use to get information from the ubihelper service.&nbsp;</p><h3>HTTP Server configuration</h3><p>The port that the server runs on defaults to "8080", and can be configured in the ubihelper preferences:</p><p> <img style="width: 240px; height: 427px;" alt="preferences" src="images/preferences-disabled.png"></p><p>When
+for these views is 0.25 seconds, i.e. 4Hz):</p><img style="width: 240px; height: 427px;" alt="channels list" src="images/channels-list.png"> <br><p>For example, the "accelerometer" channel:</p><img style="width: 240px; height: 427px;" alt="accelerometer channel" src="images/accelerometer-channel.png">&nbsp; <br>
+<p>Some other sample values are given <a href="#Sample_Log_Data">below</a>.<br>
+</p>
+<h2><a name="HTTP_Server"></a>HTTP Server</h2><p>Ubihelper includes a simple HTTP (web) server, which other applications use to get information from the ubihelper service.&nbsp;</p><h3>HTTP Server configuration</h3><p>The port that the server runs on defaults to "8080", and can be configured in the ubihelper preferences:</p><p> <img style="width: 240px; height: 427px;" alt="preferences" src="images/preferences-disabled.png"></p><p>When
 requesting informatioon from the ubihelper server a specific URL path
 must also be used. By default this is "/ubihelper", but this can also
 be changed in the ubihelper preferences.&nbsp;</p><p>Note that if you
@@ -61,4 +71,51 @@ response, e.g. (after pressing "Test Http" a couple of times on a real
 device):</p><p><img style="width: 360px; height: 640px;" alt="test view" src="images/test-view.png"></p><h2><a name="Using_the_Emulator"></a>Using the Emulator</h2><p>At present the ubihelper application can be run in an Android emulator, but will not return any sensor values.&nbsp;</p><p>Using the provided client code in AppFurnace (see <a href="#Using_with_AppFurnace">above</a>),
 when the AppFurnace application is previewed in the web editor it will
 open an additional window which you can use to pass sensor values to
-the running application in order to simulate sensor input:</p><img style="width: 366px; height: 314px;" alt="appfurnace sensor simulator" src="images/sensor-simulator.png">&nbsp;&nbsp; <br>In future version it is intended to allow replaying of sensor logs from real devices.</body></html>
+the running application in order to simulate sensor input:</p><img style="width: 366px; height: 314px;" alt="appfurnace sensor simulator" src="images/sensor-simulator.png">&nbsp;&nbsp; <br>
+<p>See the next section for information on logging values from real device(s) for use with the emulator.</p>
+<h2><a name="Logging_Sensor_Data"></a>Logging Sensor Data</h2>
+<p>(From version 1.1, 2012-03-21)</p>
+<p>The main preferences includes the option to log sensor values to file (on the device's SDCard). <br>
+</p>
+<br>
+<p><img style="width: 240px; height: 400px;" alt="preferences with logging" src="images/preferences-with-logging.png"></p>
+<p>The "Configure Logging" options opens the main log configuration options:</p>
+<p><img style="width: 240px; height: 400px;" alt="logging preferences" src="images/logging-preferences.png">&nbsp;</p>
+<p>Currently this allows you to specify:</p>
+<ul>
+  <li>the period at which values are logged (this is a maximum; channels may have their own rate limits which are lower than this)</li>
+  <li>a prefix applied to log filenames, which can be used to label particular sets of log files</li>
+  <li>a maximum size for a single log file</li>
+  <li>a maximum amount of space that the application will use for log files in total</li>
+  <li>whether to delete old log files to make room for new ones if the storage card is full or the cache is full</li>
+</ul>
+<p>The "Channels" option allows you to choose which sensor channels to
+log. Note: this view only shows channels when the ubihelper service is
+actually running!</p>
+<br>
+<p><img style="width: 240px; height: 400px;" alt="logging channels" src="images/logging-channels.png"></p>
+<p>The log data can be downloaded from the phone via the USB connection. The log files are stored by default in the directory <span style="font-family: monospace;">/Android/data/uk.ac.horizon.ubihelper/files/logs/</span> <br>
+</p>
+<h2><a name="Sample_Log_Data"></a>Sample Log Data</h2>
+<p>Below are some values from a log file, which show the format(s) of the respective channels.</p>
+<h4>accelerometer</h4>
+<p>Note: gyro and compass are similar.<br>
+</p>
+<pre>{<br>	"value":{<br>		"timestamp":53804449,<br>		"accuracy":3,<br>		"values":[-0.5746083855628967,5.841852188110352,7.833827972412109]<br>	},<br> 	"time":1332345357576,<br> 	"name":"accelerometer"<br>}<br></pre>
+<h4>bluetooth</h4>
+<pre>{<br>	"value":{<br>		"devices":[<br>			{<br>				"bond":10,<br>				"btclass":1084,<br>				"name":"DTVBluetooth",<br>				"btaddress":"E4:E0:C5:E0:1C:AC"<br>			},<br>			{"bond":12,"btclass":260,"name":"axcmini","btaddress":"00:26:B0:F7:A5:70"},<br>			{"bond":10,"btclass":524,"name":"Galaxy Nexus","btaddress":"BC:B1:F3:7D:4A:75"}<br>		],<br>		"time":1332345415715<br>	},<br>	"time":1332345415719,<br>	"name":"bluetooth"<br>}<br></pre>
+<h4>cell.location</h4>
+
+<pre>{<br>	"value":{<br>		"type":"gsm",<br>		"timestamp":1332345421317,<br>		"cid":61723379,<br>		"lac":215<br>	},<br>	"time":1332345421318,<br>	"name":"cell.location"<br>}<br></pre>
+
+<h4>gpsstatus</h4>
+
+<pre>{<br>	"value":{<br>		"timeToFirstFix":0,<br>		"timestamp":1332345417008,<br>		"maxSatellites":255,<br>		"satellites":[<br>			{"snr":15,"prn":5,"azimuth":184,"used":false,"elevation":28},<br>			{"snr":22,"prn":9,"azimuth":246,"used":false,"elevation":18},<br>			{"snr":20,"prn":15,"azimuth":290,"used":false,"elevation":52},<br>			{"snr":25,"prn":18,"azimuth":315,"used":false,"elevation":21},<br>			{"snr":18,"prn":21,"azimuth":292,"used":false,"elevation":13},<br>			{"snr":26,"prn":27,"azimuth":248,"used":false,"elevation":43}<br>		],<br>		"status":4<br>	},<br>	"time":1332345417012,<br>	"name":"gpsstatus"<br>}<br></pre>
+
+<h4>location.gps</h4>
+
+<pre>{<br>	"value":{<br>		"timestamp":1332345421184,<br>		"provider":"gps",<br>		"lon":-1.1879963576391386,<br>		"time":1332431819160,<br>		"accuracy":35,<br>		"altitude":53,<br>		"lat":52.95323877913924<br>	},<br>	"time":1332345421186,<br>	"name":"location.gps"<br>}<br></pre>
+
+<h4>wifi</h4>
+<pre>{<br>	"value":{<br>		"networks":[<br>			{<br>				"address":"00:17:0e:86:03:86",<br>				"level":-67,<br>				"capabilities":"[WPA2-EAP-CCMP]",<br>				"name":"eduroam"<br>			},<br>			{"address":"00:17:0e:86:02:c2","level":-95,"capabilities":"[WPA2-EAP-CCMP]","name":"eduroam"},<br>			{"address":"00:17:0e:86:03:82","level":-62,"capabilities":"[WEP]","name":"CSiTwep"},<br>			{"address":"00:17:0e:86:03:83","level":-65,"capabilities":"[WEP]","name":"MRL"},<br>			{"address":"00:17:0e:86:03:80","level":-66,"capabilities":"[WEP]","name":"CSiT28"},<br>			{"address":"00:17:0e:86:03:81","level":-70,"capabilities":"[WEP]","name":"CSiTrobots"},<br>			{"address":"00:17:0e:86:10:f2","level":-94,"capabilities":"[WEP]","name":"CSiTwep"},<br>			{"address":"00:17:0e:86:10:f1","level":-94,"capabilities":"[WEP]","name":"CSiTrobots"},<br>			{"address":"00:17:0e:86:10:f0","level":-98,"capabilities":"[WEP]","name":"CSiT28"},<br>			{"address":"00:17:0e:86:03:84","level":-65,"capabilities":"","name":"UoN-guest"}<br>		],<br>		"time":1332345416938<br>	},<br>	"time":1332345416991,<br>	"name":"wifi"<br>}</pre>
+</body></html>
