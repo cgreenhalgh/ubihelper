@@ -581,7 +581,7 @@ public class PeerManager {
 			// Notification?
 			// create taskbar notification
 			int icon = R.drawable.peer_request_notification_icon;
-			CharSequence tickerText = "eer request from "+ci.name;
+			CharSequence tickerText = "Peer request from "+ci.name;
 			long when = System.currentTimeMillis();
 
 			Notification notification = new Notification(icon, tickerText, when);

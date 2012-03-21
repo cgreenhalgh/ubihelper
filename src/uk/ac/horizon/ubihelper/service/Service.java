@@ -288,13 +288,13 @@ public class Service extends android.app.Service {
 			wifiDiscoveryManager.close();
 			wifiDiscoveryManager = null;
 		}
-		if (channelManager!=null) {
-			channelManager.close();
-			channelManager = null;
-		}
 		if (logManager!=null) {
 			logManager.close();
 			logManager = null;
+		}
+		if (channelManager!=null) {
+			channelManager.close();
+			channelManager = null;
 		}
 	}
 
@@ -339,6 +339,9 @@ public class Service extends android.app.Service {
 				wifiDiscoverable = getWifiDiscoverable();
 				wifiDiscoveryManager.setEnabled(wifiDiscoverable);
 			}
+			// chance for logging to update too
+			if (logManager!=null)
+				logManager.checkPreferences(key);
 		}
 	};
 	
@@ -379,6 +382,9 @@ public class Service extends android.app.Service {
 	}	
 	boolean postTask(final Runnable task) {
 		return mHandler.post(task);
+	}
+	boolean postTaskDelayed(final Runnable task, int delayMillis) {
+		return mHandler.postDelayed(task, delayMillis);
 	}
 	
 	private static final String HTTP_SUBSCRIPTION_ID = "http_subscription";

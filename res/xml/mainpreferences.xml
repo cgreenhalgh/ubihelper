@@ -13,14 +13,12 @@
     
     <PreferenceCategory
             android:title="Logging" 
-            android:dependency="run_service"
             >
 
 		<CheckBoxPreference 
 		    android:key="log"
 		    android:title="Log to file" 
 		    android:defaultValue="false"
-		    android:enabled="false"
 		    />
 		
  		<Preference 

@@ -21,17 +21,16 @@
 
 package uk.ac.horizon.ubihelper.ui;
 
-import java.io.File;
-
 import uk.ac.horizon.ubihelper.R;
 import uk.ac.horizon.ubihelper.service.LogManager;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.Preference;
+import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.util.Log;
 
@@ -40,49 +39,55 @@ import android.util.Log;
  *
  */
 public class LoggingPreferences extends PreferenceActivity {
-	public static final String LOG_PERIOD = "log_period";
-	public static final String LOG_FILE_PREFIX = "log_file_prefix";
-	public static final String LOG_MAX_FILE_SIZE = "log_max_file_size";
-	public static final String LOG_MAX_CACHE_SIZE = "log_max_cache_size";
-	public static final String LOG_DIRECTORY = "log_directory";
+	//public static final String LOG_DIRECTORY = "log_directory";
 	protected static final String TAG = "ubihelper-logprefs";
 	private EditTextPreference logPeriod;
 	private EditTextPreference logFilePrefix;
 	private EditTextPreference logMaxFileSize;
 	private EditTextPreference logMaxCacheSize;
-	private Preference logDirectory;
+	//private Preference logDirectory;
+	
+	public static final String INTENT = "uk.ac.horizon.ubihelper.CONFIGURE_LOGGING";
 	
 	/* (non-Javadoc)
 	 * @see android.preference.PreferenceActivity#onCreate(android.os.Bundle)
 	 */
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
 		// Load the preferences from an XML resource
         addPreferencesFromResource(R.xml.loggingpreferences);        
-        logPeriod = (EditTextPreference)getPreferenceScreen().findPreference(LOG_PERIOD);
+        logPeriod = (EditTextPreference)getPreferenceScreen().findPreference(LogManager.LOG_PERIOD);
         logPeriod.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
         updateLogPeriodSummary();
-        logFilePrefix = (EditTextPreference)getPreferenceScreen().findPreference(LOG_FILE_PREFIX);
+        logFilePrefix = (EditTextPreference)getPreferenceScreen().findPreference(LogManager.LOG_FILE_PREFIX);
         updateLogFilePrefixSummary();
-        logMaxFileSize = (EditTextPreference)getPreferenceScreen().findPreference(LOG_MAX_FILE_SIZE);
+        logMaxFileSize = (EditTextPreference)getPreferenceScreen().findPreference(LogManager.LOG_MAX_FILE_SIZE);
         logMaxFileSize.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
         updateLogMaxFileSizeSummary();
-        logMaxCacheSize = (EditTextPreference)getPreferenceScreen().findPreference(LOG_MAX_CACHE_SIZE);
+        logMaxCacheSize = (EditTextPreference)getPreferenceScreen().findPreference(LogManager.LOG_MAX_CACHE_SIZE);
         logMaxCacheSize.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
         updateLogMaxCacheSizeSummary();
-        logDirectory = getPreferenceScreen().findPreference(LOG_DIRECTORY);
-        updateLogDirectory();
+        //logDirectory = getPreferenceScreen().findPreference(LOG_DIRECTORY);
+        //updateLogDirectory();
+        Preference logChannels = getPreferenceScreen().findPreference(LogManager.LOG_CHANNELS);
+        logChannels.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+			public boolean onPreferenceClick(Preference p) {
+				Intent i = LoggingChannelListActivity.getStartActivityIntent(LoggingPreferences.this);
+				startActivity(i);
+				return true;
+			}
+        });
+        
 	}
 
-	private void updateLogDirectory() {
-		File dir = LogManager.getLogDirectory(this);
-		if (dir!=null)
-			logDirectory.setSummary(dir.toString());
-		else
-			logDirectory.setSummary("Unknown (external storage may not be available)");
-	}
+//	private void updateLogDirectory() {
+//		File dir = LogManager.getLogDirectory(this);
+//		if (dir!=null)
+//			logDirectory.setSummary(dir.toString());
+//		else
+//			logDirectory.setSummary("Unknown (external storage may not be available)");
+//	}
 
 	private void updateLogPeriodSummary() {
 		logPeriod.setSummary(logPeriod.getText()+" seconds");
@@ -104,13 +109,13 @@ public class LoggingPreferences extends PreferenceActivity {
 				public void onSharedPreferenceChanged(SharedPreferences prefs,
 						String key) {
 					Log.d(TAG,"Preference changed: "+key);
-					if (LOG_PERIOD.equals(key))
+					if (LogManager.LOG_PERIOD.equals(key))
 						updateLogPeriodSummary();
-					else if (LOG_FILE_PREFIX.equals(key))
+					else if (LogManager.LOG_FILE_PREFIX.equals(key))
 						updateLogFilePrefixSummary();
-					else if (LOG_MAX_FILE_SIZE.equals(key))
+					else if (LogManager.LOG_MAX_FILE_SIZE.equals(key))
 						updateLogMaxFileSizeSummary();
-					else if (LOG_MAX_CACHE_SIZE.equals(key))
+					else if (LogManager.LOG_MAX_CACHE_SIZE.equals(key))
 						updateLogMaxCacheSizeSummary();
 				}
 	};
