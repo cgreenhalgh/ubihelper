@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Mobile Networking Options</title></head>
+<body>
+<h1>Mobile Networking Options</h1>
+<p>Chris Greenhalgh, 2012-03-13</p>
+<h2>Constraints and issues</h2><h3>Clients/platforms</h3><ul><li>AppFurnace,
+simulator, runs in Chrome or Safari; Cross-site scripting restrictions
+prevent XmlHttpRequest and web sockets working (JSONP works).</li><li>AppFurnace, on Android device, does not support WebSockets.</li><li>Ubihelper is specific to Android (2.2+)</li></ul><h3>Networking technologies</h3><ul><li>Android in mobile hub mode does not expose wireless interface information through normal Wifi manager API&nbsp;</li><ul><li>(Java NetworkInterface introspection and OS /proc/... not yet tested)</li></ul><li>Android does not generally support p2p wifi prior to version 4 (with a few apparent exceptions)</li><li>Bluetooth has various limitations e.g.</li><ul><li>no. client devices, ability to discover and be discovered concurrently, ability to be client and server</li><li>discovery latency (12s), limited throughput</li></ul></ul><h3>Networks</h3><ul><li>uon-guest,&nbsp;</li><ul><li>requires users to log into a web form (with a broken certificate) before they can access the web</li><li>does not currently allow access to teaching.cs.nott.ac.uk:49891 (but does to :80)</li><li>does not generally allow different devices on the network to communicate directly</li></ul><ul><li>does not generally allow multicast discovery between devices on the network</li></ul><li>uon-secure, requires use of a proxy to access off-site web servers, including google maps</li><ul><li>many Android phones prior to 3.x cannot have a web proxy set, so cannot access off-site servers via this network</li><li>does not generally allow different devices on the network to communicate directly</li><li>does not generally allow multicast discovery between devices on the network</li></ul></ul><h3>Servers</h3><ul><li>personal (development) machine -&nbsp;</li><ul><li>usable with network allowing local communication, i.e. not uon-secure or uon-guest</li></ul><li>teaching.cs.nott.ac.uk&nbsp;</li><ul><li>currently
+usable from off-campus and from uon-secure, but not from uon-guest
+(i.e. in combination with Google maps or other external service from an
+Android 2 device)</li></ul><li>google app engine</li><ul><li>requires proxy with uon-secure (i.e. not Android 2)</li></ul></ul><h2>Existing (public) Services</h2>
+<ul>
+  <li>Twitter - see AppFurnace Twitter widget, <a href="http://the.appfurnace.com/docs/files/widgetsGeneratedDocs/Twitter-js.html">http://the.appfurnace.com/docs/files/widgetsGeneratedDocs/Twitter-js.html</a></li>
+  <li>Facebook - see AppFurnace Facebook example, <a href="http://the.appfurnace.com/docs/files/network/FaceBook-js.html">http://the.appfurnace.com/docs/files/network/FaceBook-js.html</a></li>
+  <li>XMPP / Jabber</li>
+  <li>Dropbox</li>
+</ul>
+<h2>New / bespoke services</h2>
+<ul>
+  <li>TinyWebDB - see below</li><li>ubiserver - socket.io-based protocol</li>
+  <li>ubihelper - peer/server protocol</li>
+</ul>
+<h3>TinyWebDB</h3>
+
+<p>This is a simple key/value store service implementing the TinyWebDB protocol defined for Google lab's (defunct) AppInventor. <br>
+</p>
+For the protocol see <a href="http://tinywebdbg54ubi.appspot.com/jsclient/TinyWebDB_Protocol.html" style="font-family: 'Times New Roman'; font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: normal; orphans: 2; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; font-size: medium;">TinyWebDB_Protocol.html</a><br>
+<p>For sample Javascript which should be usable in AppFurnace see&nbsp;<a href="http://tinywebdbg54ubi.appspot.com/jsclient/AppFurnace_notes.html">http://tinywebdbg54ubi.appspot.com/jsclient/AppFurnace_notes.html</a>.&nbsp;<span style="font-family: 'Times New Roman'; font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: normal; orphans: 2; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; font-size: medium;">This defines the main functions:</span></p>
+<ul>
+  <li>
+    <pre style="color: rgb(0, 0, 0); font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px;">function get_value(tag)</pre></li><li><span style="font-family: monospace;">function done_get(value)</span></li>
+  <li>
+    <pre style="color: rgb(0, 0, 0); font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px;">function set_value(tag, value)</pre></li><li><span style="font-family: monospace;">function done_set(value)</span></li>
+</ul>
+<p>The done_... callback functions will be called with the returned
+results (an array of 'VALUE', tag, value) as its only argument (if
+successful). The tag and value are both strings.<br>
+</p>
+<p>To use my temporary server on Google App Engine use a URL like <a href="http://tinywebdbg54ubi.appspot.com/YOURNAME/">http://tinywebdbg54ubi.appspot.com/YOURNAME/</a>.
+Navigating to this URL will also allow you to inspect the values
+currently stored. The browser-based Javascript client hosted by the
+server will also allow you to get/set values using simple web
+forms:&nbsp;<a href="http://tinywebdbg54ubi.appspot.com/jsclient/index.html">http://tinywebdbg54ubi.appspot.com/jsclient/index.html</a></p>
+To set up your own GAE server see the source at <a href="https://github.com/cgreenhalgh/tinywebdbg54ubi">https://github.com/cgreenhalgh/tinywebdbg54ubi</a> and <a href="http://code.google.com/appengine/">Google App Engine</a>
+<p><br>
+</p>
+
+
+
+</body></html>
