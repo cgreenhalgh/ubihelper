@@ -45,6 +45,7 @@ import uk.ac.horizon.ubihelper.service.channel.CellLocationChannel;
 import uk.ac.horizon.ubihelper.service.channel.CellStrengthChannel;
 import uk.ac.horizon.ubihelper.service.channel.GpsStatusChannel;
 import uk.ac.horizon.ubihelper.service.channel.LocationChannel;
+import uk.ac.horizon.ubihelper.service.channel.MicChannel;
 import uk.ac.horizon.ubihelper.service.channel.SensorChannel;
 import uk.ac.horizon.ubihelper.service.channel.TimeChannel;
 import uk.ac.horizon.ubihelper.service.channel.WifiScannerChannel;
@@ -184,6 +185,9 @@ public class Service extends android.app.Service {
 			LocationChannel locchannel = new LocationChannel("location."+provider, this, provider);
 			channelManager.addChannel(locchannel);
 		}
+		
+		channelManager.addChannel(new MicChannel(mHandler, "mic"));
+		
 		Log.d(TAG,"Create http server...");
 		
 		// http server
@@ -457,6 +461,7 @@ public class Service extends android.app.Service {
 	/** public API - get initial value and create BroadcastIntentSubscription for name */
 	public BroadcastIntentSubscription watchChannel(String channelName, double period) {
 		BroadcastIntentSubscription bis = new BroadcastIntentSubscription(this, channelName);
+		// above did own updateSubscription (0.25/0.125)
 		// may broadcast immediately!
 		channelManager.addSubscription(bis);
 		channelManager.refreshChannel(channelName);

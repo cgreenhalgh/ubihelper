@@ -39,7 +39,7 @@ public class BroadcastIntentSubscription extends Subscription {
 	public static final String EXTRA_NAME = "uk.ac.horizon.ubihelper.extras.NAME";
 	public static final String EXTRA_VALUE = "uk.ac.horizon.ubihelper.extras.VALUE";
 	private static final double DEFAULT_PERIOD = 0.25;
-	private static final double DEFAULT_MIN_INTERVAL = 0.2;
+	private static final double DEFAULT_MIN_INTERVAL = DEFAULT_PERIOD/2;
 	private Context context;
 	
 	public BroadcastIntentSubscription(Context context, String channelName) {

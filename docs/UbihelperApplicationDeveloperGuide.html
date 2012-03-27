@@ -1,8 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
-<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.2 (updated 2012-03-12).</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Using_with_AppFurnace">Using With AppFurnace</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li>
-  <li><a href="#Logging_Sensor_Data">Logging Sensor Data</a><br>
+
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubihelper Application Developer Guide</title></head><body><h1>Ubihelper - Application Developer Guide</h1><p>Chris Greenhalgh, 2012-03-09. Version 1.3 (updated 2012-03-27), for Ubihelper 1.1.2.</p><p>For people who are developing (e.g.) <a href="http://www.appfurnace.com/">AppFurnace</a> applications using ubihelper.</p><p>See <a href="UbihelperEndUserGuide.html">UbihelperEndUserGuide.html</a> for details on installing and starting/stopping the ubihelper application and service.</p><p>Contents:</p><ul><li><a href="#Overview">Overview</a></li><li><a href="#Using_with_AppFurnace">Using With AppFurnace</a></li><li><a href="#Channels">Channels</a></li><li><a href="#HTTP_Server">HTTP Server</a></li><li><a href="#Using_the_Emulator">Using the Emulator</a></li>
+  <li><a href="#Logging_Sensor_Data">Logging Sensor Data</a></li>
+  <li><a href="#Sample_Log_Data">Sample_Log_Data</a><br>
   </li>
+
 </ul><h2><a name="Overview"></a>Overview</h2><p>Ubihelper
 allows applications running on the phone - such as AppFurnace
 applications - to access additional sensor information, such as
@@ -37,7 +40,10 @@ type of value returned by a channel depends on the channel, i.e.
 different channel may return completely different kinds of values.</p><p>The
 available channels may vary from device to device. If a channel does
 not exist on a particular device then no values will be returned from
-it. Some of the standard channel names are:</p><ul><li>accelerometer</li><li>bluetooth - scans for discoverable Bluetooth devices</li><li>cell.location - GSM/3G current cell ID</li><li>channels - list of current known channels</li><li>gpsstatus - status of GPS, e.g. available satellites</li><li>gyro</li><li>location.gps - GPS location</li><li>location.network - location based on Cellular and Wifi networks</li><li>magnetic</li><li>pressure</li><li>proximity - the proximity sensor that turns off the mobile's screen when held to your ear for a phone call</li><li>wifi - scans for Wifi access points in range</li></ul><p>From
+it. Some of the standard channel names are:</p><ul><li>accelerometer</li><li>bluetooth - scans for discoverable Bluetooth devices</li><li>cell.location - GSM/3G current cell ID</li><li>channels - list of current known channels</li><li>gpsstatus - status of GPS, e.g. available satellites</li><li>gyro</li><li>location.gps - GPS location</li><li>location.network - location based on Cellular and Wifi networks</li><li>magnetic</li>
+  <li>mic - sound level from microphone<br>
+  </li>
+<li>pressure</li><li>proximity - the proximity sensor that turns off the mobile's screen when held to your ear for a phone call</li><li>wifi - scans for Wifi access points in range</li></ul><p>From
 the ubihelper preferences screen, the option menu "Channels" gives a
 list of known channels, which may be viewed (the default update period
 for these views is 0.25 seconds, i.e. 4Hz):</p><img style="width: 240px; height: 427px;" alt="channels list" src="images/channels-list.png"> <br><p>For example, the "accelerometer" channel:</p><img style="width: 240px; height: 427px;" alt="accelerometer channel" src="images/accelerometer-channel.png">&nbsp; <br>
@@ -116,6 +122,9 @@ actually running!</p>
 
 <pre>{<br>	"value":{<br>		"timestamp":1332345421184,<br>		"provider":"gps",<br>		"lon":-1.1879963576391386,<br>		"time":1332431819160,<br>		"accuracy":35,<br>		"altitude":53,<br>		"lat":52.95323877913924<br>	},<br>	"time":1332345421186,<br>	"name":"location.gps"<br>}<br></pre>
 
+<h4>mic</h4>
+<pre>{<br>	"value":{<br>		"rmsdb":-48.76179885864258,<br>		"samples":1600,<br>		"max":0.04046754539012909<br>	},<br>	"time":1332865506869,<br>	"name":"mic"<br>}<br></pre>
 <h4>wifi</h4>
+
 <pre>{<br>	"value":{<br>		"networks":[<br>			{<br>				"address":"00:17:0e:86:03:86",<br>				"level":-67,<br>				"capabilities":"[WPA2-EAP-CCMP]",<br>				"name":"eduroam"<br>			},<br>			{"address":"00:17:0e:86:02:c2","level":-95,"capabilities":"[WPA2-EAP-CCMP]","name":"eduroam"},<br>			{"address":"00:17:0e:86:03:82","level":-62,"capabilities":"[WEP]","name":"CSiTwep"},<br>			{"address":"00:17:0e:86:03:83","level":-65,"capabilities":"[WEP]","name":"MRL"},<br>			{"address":"00:17:0e:86:03:80","level":-66,"capabilities":"[WEP]","name":"CSiT28"},<br>			{"address":"00:17:0e:86:03:81","level":-70,"capabilities":"[WEP]","name":"CSiTrobots"},<br>			{"address":"00:17:0e:86:10:f2","level":-94,"capabilities":"[WEP]","name":"CSiTwep"},<br>			{"address":"00:17:0e:86:10:f1","level":-94,"capabilities":"[WEP]","name":"CSiTrobots"},<br>			{"address":"00:17:0e:86:10:f0","level":-98,"capabilities":"[WEP]","name":"CSiT28"},<br>			{"address":"00:17:0e:86:03:84","level":-65,"capabilities":"","name":"UoN-guest"}<br>		],<br>		"time":1332345416938<br>	},<br>	"time":1332345416991,<br>	"name":"wifi"<br>}</pre>
 </body></html>
