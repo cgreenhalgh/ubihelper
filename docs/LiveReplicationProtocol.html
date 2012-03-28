@@ -1,0 +1,192 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <title>Live Replication Protocol</title>
+
+  
+</head><body>
+<h1>Live Replication Protocol</h1>
+
+<p>Chris Greenhalgh, 2012-03-28</p>
+
+<h2>Introduction</h2>
+
+<p>Working notes on an application protocol for "live" state
+replication over limited bandwidth and/or intermittent and/or
+alternative physical and link layer transports.</p>
+
+<p>Goals &amp; constraints:</p>
+
+<ul>
+
+  <li>Maintain a remote replicate of some evolving state</li>
+  <li>One-way replication, i.e. this version does not consider multiple
+writers to the same state</li>
+  <li>State is subdivided into a set of key-value pairs, each of which
+may be created/updated/deleted individually and atomically; later
+versions may consider additional support for large and/or compound
+values of a single key<br>
+  </li>
+  <li>Usable across a range of implementation platforms, including <br>
+  </li>
+  <ul>
+    <li>desktop browser (e.g. AppFurnace simulator)</li>
+    <li>mobile browser (e.g. AppFurnace on-device)</li>
+    <li>native mobile application (e.g. ubihelper, PhoneGap extension
+or other native app)</li>
+    <li>multi-user server(s) (e.g. node.js server)</li>
+    <li>embedded sensor server(s) (e.g. Java-based server on Phidget
+SBC or desktop computer)</li>
+  </ul>
+  <li>Copes gracefully with limited bandwidth and temporary losses of
+connectivity</li>
+  <ul>
+    <li>achieves eventual consistency, even in the face of ongoing
+state changes</li>
+    <li>recovers after transport-level failures</li>
+    <li>does NOT attempt to replicate full state change history, only
+'current' state, i.e. timliness is more important than historical
+completeness</li>
+  </ul>
+  <li>Provides status information to origin and replica, in particular</li>
+  <ul>
+    <li>at origin, what version of state is known to have been
+replicated (and what version might exist)</li>
+    <li>at replica, when a consistent/complete state snapshot has been
+replicated (and the time of that snapshot)<br>
+    </li>
+    <li>at origin and replica, when last successful communication with
+the other occurred, and whether this is believed still established,
+known to have failed, or attempting to (re)establish</li>
+  </ul>
+</ul>
+
+<p>General/implementation Approach:</p>
+
+<ul>
+
+  <li>Socket.io has been used successfully to provide a common
+networking interface for AppFurnace in simulator and on real device. So
+the protocol will made compatible with socket.io, i.e. implementable
+over socket.io and interoperable with a socket.io-based implementation
+where socket.io is not used.</li>
+  <li>The most performant transport option for socket.io is WebSockets,
+although this is not currently available in the Android mobile browser
+(and hence to AppFurnace). So native implementation(s) will use
+WebSockets as a transport for IP-based communication.</li>
+  <ul>
+    <li>Non-IP-based communication (e.g. Bluetooth serial) will also
+use a WebSocket-based protocol layer (for framing and control messages)</li>
+  </ul>
+</ul>
+
+Protocol notes:<br>
+
+<ul>
+
+  <li>Explicit (application) message acknowledgements will be used
+determine successful transfers of partial state (individual key-value
+pairs).</li>
+  <li>State snapshop comprises a map of key-value pairs, where each key
+is unique.</li>
+  <li>Origin will maintain an update queue, comprising a list or
+key-value pairs, interleaved with snapshot markers (which indicate a
+complete/consistent state view to that point)</li>
+  <ul>
+    <li>E.g.
+an initial state { a : 1, b : 2 } yields an update queue [ { newstate
+}, { update : { a : 1 }}, { update : { b : 2}}, { snapshot: T1
+} ]</li>
+    <li>An update for a to 3 yields additional updates [... { update: {
+a : 3 }, { snapshot: T2 } ].&nbsp;</li><li>Without transactions every update is followed by a snapshot
+marker; with transactions the updates comprising a committed
+transaction are followed by a single snapshot marker.</li>
+    <li>Deleting a key-value is represented by an update to null.</li>
+
+  </ul>
+  <li>When sent, every message is tagged with a state ID which uniquely/globally identifies this time-varying state set.</li>
+  <ul>
+    <li>If a replica recieves any messages other than newstate for an
+unknown state ID then it must reject it with an unknown-state error;
+the origin should restart from a newstate and initial state snapshot.</li>
+    <li>It is assumed/required other (e.g. transport-layer) constraints
+will be used to ensure that messages are consistently delivered (if at
+all) to the same replica.<br>
+    </li>
+  </ul>
+  <li>Transport-level messages may combine several update(s) and/or
+other messages in order to reduce overhead, all be it at the cost of
+joint failure (transfer or ack). <br>
+  </li>
+<li>Origin will maintain information about state at replica: not
+sent, maybe received-awaiting ack, maybe received-no ack, known
+received.</li>
+  <li>New updates are not sent until/unless they are followed by a
+snapshot message.</li>
+  <li>When send updates become maybe received-awaiting ack.<br>
+  </li>
+  <li>Snapshots are not actually sent as normal messages; sending is
+deferred subject to acks received (see later).<br>
+  </li>
+  <li>For flow control, the origin will not send updates that are
+followed by a new snapshot until the previous snapshot has been
+completed or failed (see below).</li>
+  <li>If the transport connection is found to have failed (explicitly
+or by ack timeout at origin) then all maybe received-awaiting ack
+messages are changed to maybe received-no ack. All older maybe
+received-no ack updates for the same key(s) are discarded by the origin
+(or could be kept, strictly, but depends what we try to infer!).<br>
+  </li>
+  <li>If
+a message is acked then its state is changed to known received. Any
+older known-received&nbsp; and maybe received-no ack updates for the
+same key are discarded by the
+origin.</li>
+  <li>When
+no messages are in state maybe received-awaiting ack then the snapshot
+send attempt is complete;&nbsp;</li>
+  <ul>
+    <li>if
+there are no messages in state maybe received-no ack then the snapshot
+state should be the same as the messages in state known received (where
+key set to null is equivalent to key not being present in state), and
+origin sends a snapshot message (without the state). If/when this is
+acked then the client updates its view of known replica state to that
+snapshot (if the client doesn't release the state until it knows it is
+complete).</li>
+    <li>Else
+(there are messages in state maybe received-no ack), <br>
+    </li>
+    <ul>
+      <li>send
+a snapshot-incomplete message (without state), <br>
+      </li>
+      <li>if
+there is no snapshot in the queue then re-add the most recent (failed)
+snapshot</li>
+      <li>for
+each key in state maybe received-no ack, if there is not already an
+update for that key before the next (most recent) snapshot then copy
+the most recent maybe received-no ack message for that key to the front
+of the queue and mark not sent (this should be the same as its state in
+the
+next snapshot, or null if not present; note that the update (also)
+remains maybe received-no-ack until/unless the new message is acked).</li>
+    </ul>
+    <li>If
+a new snapshot is in the queue then all messages up to it can now be
+sent (becoming maybe received-awaiting ack)<br>
+    </li>
+  </ul>
+  <li>If
+there are two (or more) snapshot messages not sent then all not sent
+messages up to the last not sent snapshot are merged, i.e. only the
+last update for each key is retained and the ealier snapshot messages
+are discarded.</li>
+</ul>
+
+<br>
+
+<br>
+</body></html>
