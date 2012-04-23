@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubiserver2 Design Notes</title></head><body>
+<h1>Ubiserver2 Design Notes</h1>
+<p>Chris Greenhalgh, 2012-04-23</p>
+<p>Two main services should be supported:</p>
+<ul>
+  <li>best effort, eventually consistent, streaming, state sharing (key-value set)</li>
+  <li>reliable, durable, idempotent, distributed (remote) (trans)action</li>
+</ul>
+<p>Transport options are:</p>
+<ul>
+  <li>TCP - between native applications</li>
+  <li>Bluetooth stream - between proximate mobile applications</li>
+  <li>JSONP over HTTP/HTTPS -&nbsp; between Browser-based application
+(including AppFurnace and optionally Phonegap and desktop browser apps)
+and server</li>
+  <li>Websocket - between desktop browser (and future mobile browser) and server - (optional efficiency/performance enhancement)</li>
+</ul>
+<p>Related:</p>
+<ul>
+  <li>Websockets provide a socket-like API to browsers supporting
+bi-directional message-oriented communication within the context of a
+single (initially) HTTP connection (i.e. TCP connection) to the server.
+Supports transmission of (distinct) binary and text messages.
+Optionally supports different protocols and extensions (e.g.
+compression).</li>
+  <ul>
+    <li>Websockets
+specifies a Base Framing Protocol that support clone, ping and pong
+control frames and simply fragmented text and binary non-control
+(message) frames. This comprises an initial binary-packet 16 bit
+header: <br>
+      <pre class="newpage" style="font-size: 1em; margin-top: 0px; margin-bottom: 0px; page-break-before: always; color: rgb(0, 0, 0); font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px;">      0                   1                   2                   3<br>      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1<br>     +-+-+-+-+-------+-+-------------+-------------------------------+<br>     |F|R|R|R| opcode|M| Payload len |    Extended payload length    |<br>     |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |<br>     |N|V|V|V|       |S|             |   (if payload len==126/127)   |<br>     | |1|2|3|       |K|             |                               |<br>     +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +<br>     |     Extended payload length continued, if payload len == 127  |<br>     + - - - - - - - - - - - - - - - +-------------------------------+<br>     |                               |...<br>     +-------------------------------+</pre>
+FIN = last fragment; opcode 0x0=continuation (fragment), 0x1=text,
+0x2=binary, 0x8=close, 0x9=ping, 0x10=pong; len=126 implies two byte
+length follows, len=127 implies 8 byte length follows; MASK = data is
+masked, key follows.</li>
+    <li>Full functionality presumes an underlying connection. Batch
+mode use (e.g. with JSONP) could use only text, binary and continuation
+frames for message framing. Although control message types could be
+used as a limited optimisation. But case would be needed in terms of
+independent failure of each request. A sequence of (potentially
+tandemed) gets could be made analogous to a connection. The first
+failure would 'fail' that pseudo-connection. All requests would be from
+the same client. The client would need to send a request correlation
+token to the server in each request (could be a query parameter or
+special first message). This could comprise a persistent client ID and
+a connection (initiation) timestamp.<br>
+    </li>
+    <li>Use over simple TCP could replicate Websocket operation.&nbsp;</li>
+  </ul>
+  <li>Socket.io provides one possible abstraction over JSONP and
+Websockets. It requires the server to be a HTTP server
+(of some sort). After an initial HTTP GET to establish the connection
+it provides a message passing abstraction, with its own message
+format/protocol and simple framing (where required, e.g. JSONP).Uses
+heartbeats and timeout for softstate disconnection. Provides only text
+messages. Probably best used just as a temporary (or Javascript-only)
+abstraction over Websockets/JSONP. Question: do we trust socket.io
+reliability of message sending/signalling of failure??<br>
+  </li>
+</ul>
+<p>Overview</p>
+<ul>
+  <li>Associations between devices (and between devices and services)
+are assumed to be more durable that transport connections. Soft-state
+timeouts and/or explicit user management are used to terminate/remove
+associations.</li>
+  <li>Associations are secure once established in that new connections
+are authenticated before being assigned to an existing association.</li>
+  <ul>
+    <li>These aspects are provided by the current <a href="UbiHelperPeerNetwork.html">Ubihelper Peer Network protocol</a>. The initial client-server case would require new association with no pin, and re-connect.<br>
+</li>
+  </ul>
+  <li>Within an association a state management layer would allow control over state sets being shared with and by the peer.</li>
+  <ul>
+    <li>Propagating changes to a single state set would use the (designed but not yet implemented) <a href="LiveReplicationProtocol.html">Live Replication protocol</a>.</li>
+    <li>This might be bootstrapped via one or more auto-shared state
+sets, which could be used (amongst other things) to push subscription
+requests for further far-end state sets.<br>
+    </li>
+  </ul>
+</ul>
+</body></html>

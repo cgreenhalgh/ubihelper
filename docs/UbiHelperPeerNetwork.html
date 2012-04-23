@@ -1,10 +1,12 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
+
 <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head><body>
 <h1>UbiHelper Peer Network</h1>
 <p>
 
-Chris Greenhalgh, 2012-02-21</p>
+Chris Greenhalgh, 2012-02-21. Revised 2012-04-23 for greater portability.<br>
+</p>
 <p>Working/design notes on the peer networking element of the ubihelper service/framework.</p>
 <p>Requirements:</p>
 <ol>
@@ -133,8 +135,13 @@ same]<br>
 Open issues:<br>
 <ul>
   <li>Currently using a nasty and incomplete mDNS implementation; could change to an established one, e.g. JmDNS...</li>
-</ul>
-Ongoing use (with established authenticated connection (or HTTP request sequence)):<br>
+</ul>Ongoing use (with established authenticated connection (or HTTP
+request sequence)):Socket.io provides one possible abstraction over
+JSONP and Websockets. It requires the server to be a HTTP server
+(of some sort). After an initial HTTP GET to establish the connection
+it provides a message passing abstraction, with its own message
+format/protocol and simple framing (where required, e.g. JSONP).Uses
+heartbeats and timeout for softstate disconnection.
 <ul>
   <li>Local list of trusted peers</li>
   <li>Get cached information about peer (BT MAC, name, ...?)</li>
@@ -147,9 +154,7 @@ Ongoing use (with established authenticated connection (or HTTP request sequence
 <p>Goals/constraints:</p>
 <ul>
 <li>Message-oriented</li>
-<li>doesn't need to interoperate with existing protocol(s)</li><li>
-    <br>
-</li><li>Should include protocol declaration/agreement, including version on connection</li>
+<li>doesn't need to interoperate with existing protocol(s)</li><li>Should include protocol declaration/agreement, including version on connection</li>
 <li>Should be useful for passing JSON-encoded messages. org.json
 marshalls to/from Strings only. So needs to pass UTF-8 encoded strings
 as a message primitive. Could be newline separated.</li>
@@ -161,15 +166,18 @@ as a message primitive. Could be newline separated.</li>
 <li>Probably useful to include some link-layer abstraction(s), e.g. fragmentation, to allow interleaving</li>
 </ul>
 <p>Approach:</p>
+
 <ul>
-<li>Think of current connection state as analogous to additional HTTP headers, e.g. correlation token, content type</li>
-<li>Look at java.nio.charset.CharsetEncoder/CharsetDecoder for
+  <li>Build on a simple messages over connection abstraction (portable to Bluetooth, TCP, Websockets, etc.)</li>
+  <li style="text-decoration: line-through;">Think of current connection state as analogous to additional HTTP headers, e.g. correlation token, content type</li>
+
+<li style="text-decoration: line-through;">Look at java.nio.charset.CharsetEncoder/CharsetDecoder for
 encode/decode between java.nio.CharBuffer (in particular String or
 StringBuilder, respectively) and (multiple) java.nio.ByteBuffer (over
 slice of byte array)</li>
 </ul>
-<p>"Link-layer" format (byte-encoded basic layer):</p>
-<ul>
+<p style="text-decoration: line-through;">"Link-layer" format (byte-encoded basic layer):</p>
+<ul style="text-decoration: line-through;">
 <li>flags(1 byte):</li>
 <ul>
 <li>bit 1 (high bit) - more fragments to follow</li>
@@ -187,26 +195,40 @@ slice of byte array)</li>
 <li>fragmentid(2 bytes, big-endian, incrementing from 1 (0 if unfragmented), unsigned, bounded 2^16-1)</li>
 <li>fragmentlength(2 bytes, big endian, unsigned, bounded 2^16-1)</li>
 </ul>
-<p>Followed by fragmentlength bytes of payload</p>
-<p>When sending text this should be UTF-8 encoded; NL (only) is the line separator (where applicable).</p>
-New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/version</li>
+<p style="text-decoration: line-through;">Followed by fragmentlength bytes of payload</p>
+<p style="text-decoration: line-through;">When sending text this should be UTF-8 encoded; NL (only) is the line separator (where applicable).</p>
+<p><span style="font-style: italic;">Note: other forms of framing and encoding could be used, e.g. Websocket base framing (<a href="http://tools.ietf.org/html/rfc6455#section-5.2">http://tools.ietf.org/html/rfc6455#section-5.2</a>).
+At present only UTF-8 encoded messages are being used. There is no
+clear requirement for the message sub-types so these could be discarded
+and only a basic message passing facility presumed.</span><br>
+</p>
+<span style="text-decoration: line-through;">
+New connection exchange:</span><br style="text-decoration: line-through;"><ul style="text-decoration: line-through;"><li>initiator sends HELLO message with protocol/version</li>
 <li>responder receives and checks HELLO</li>
 <li>responder sends own HELLO message with protocol/version</li>
 <li>initiator receives and checks HELLO</li>
-</ul>New peer request (after new connection exchange):<br>
+</ul>
+<p style="font-style: italic;">Note: this is probably unnecessary and
+could be discarded. Connection type might be inferred from other
+contextual information, e.g. Bluetooth service ID, dedicated port. But
+in this case a version should be included in initial messages.<br>
+</p>
+New peer request (after new connection exchange):<br>
 <ul>
-<li>initiator sends MANAGEMENT message (JSON object) with properties:</li>
+<li>initiator sends <span style="text-decoration: line-through;">MANAGEMENT</span> message (JSON object) with properties:</li>
 <ul>
 <li>type = "init_peer_req"</li><li>id = DEVICE-ID (unique)</li>
 <li>pindigest = bas64-encoded MD5 digest of initiator nonce and UTF-8 encoded pin</li>
 <li>port = initiator service port</li>
 <li>name = device (discovery) name</li>
-    <li>(opt.) reason = "challenge_failed" | "unknown_peer" - when sent after a failure - see resp_peer_known response, below<br>
+    <li>(opt.) reason = "challenge_failed" | "unknown_peer" - when sent after a failure - see resp_peer_known response, below</li>
+    <li><span style="font-style: italic;">version = VERSION-ID</span><br>
     </li>
+
 
 </ul><li>responder&nbsp;</li>
 <ul>
-<li>with PIN UI, requests PIN from user, and sends MANAGEMENT message with properties:</li>
+<li>with PIN UI, requests PIN from user, and sends <span style="text-decoration: line-through;">MANAGEMENT</span> message with properties:</li>
 <ul>
 <li>type = "resp_peer_pin"</li>
 <li>id = DEVICE-ID</li>
@@ -214,7 +236,7 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>name = device (discovery) name (initiator usually has it anyway)</li>
 <li>pin = input pin text</li>
 </ul>
-<li>no PIN, sends MANAGEMENT (combination of resp_peer_pin &amp; resp_peer_done) -&gt; peered<br>
+<li>no PIN, sends <span style="text-decoration: line-through;">MANAGEMENT</span> (combination of resp_peer_pin &amp; resp_peer_done) -&gt; peered<br>
 </li>
 <ul>
 <li>type = "resp_peer_nopin"</li>
@@ -224,7 +246,7 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 <li>info = ...</li>
 <li>secret = ...</li>
 </ul>
-<li>known ID with established session, sends MANAGEMENT (c.f. resp_confirm, below)<br>
+<li>known ID with established session, sends <span style="text-decoration: line-through;">MANAGEMENT</span> (c.f. resp_confirm, below)<br>
 </li>
 <ul>
 <li>type = "resp_peer_known"</li>
@@ -238,7 +260,7 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 </ul>
 <li>initiator -&nbsp;</li>
 <ul>
-<li>Receives resp_peer_pin with correct pin, sends MANAGEMENT:</li>
+<li>Receives resp_peer_pin with correct pin, sends <span style="text-decoration: line-through;">MANAGEMENT</span>:</li>
 </ul>
 <ul>
 <ul>
@@ -262,7 +284,7 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 </ul>
 <li>responder -&nbsp;</li>
 <ul>
-<li>receives init_peer_done after resp_peer_pin/nopin, checks pinnonce/pindigest/pin, sends MANAGEMENT</li>
+<li>receives init_peer_done after resp_peer_pin/nopin, checks pinnonce/pindigest/pin, sends <span style="text-decoration: line-through;">MANAGEMENT</span></li>
 <ul>
 <li>type = "resp_peer_done"</li>
 <li>info = ...</li>
@@ -272,7 +294,7 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
 </ul>Existing peer request (after new connection exchange):<br>
 
 <ul>
-<li>initiator sends MANAGEMENT message (JSON object) with properties:</li>
+<li>initiator sends <span style="text-decoration: line-through;">MANAGEMENT</span> message (JSON object) with properties:</li>
   <ul>
     <li>to trusted peer:<br>
     </li>
@@ -285,6 +307,9 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
       <li>challenge1 = base64-encoded challenge<br>
       </li>
 <li>port = initiator service port</li><li>name = device (discovery) name</li>
+      <li><span style="font-style: italic;">version = VERSION-ID</span><br>
+  </li>
+
     </ul>
     <li>untrusted peer</li>
     <ul>
@@ -294,6 +319,9 @@ New connection exchange:<br><ul><li>initiator sends HELLO message with protocol/
   </li>
       <li>port = initiator service port</li>
       <li>name = device (discovery) name</li>
+      <li><span style="font-style: italic;">version = VERSION-ID</span><br>
+  </li>
+
     </ul>
   </ul>
   <li>responder</li>
