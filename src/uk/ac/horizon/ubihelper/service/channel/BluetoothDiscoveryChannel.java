@@ -143,6 +143,12 @@ public class BluetoothDiscoveryChannel extends PollingChannel {
 		try {
 			JSONObject value = new JSONObject();
 			value.put(KEY_TIME, System.currentTimeMillis());
+			String btname = bluetooth.getName();
+			String btaddress = bluetooth.getAddress();
+			if (btname!=null)
+				value.put(KEY_NAME, btname);
+			if (btaddress!=null)
+				value.put(KEY_ADDRESS, btaddress);
 			JSONArray ds = new JSONArray();
 			value.put(KEY_DEVICES, ds);
 			for (BluetoothDevice device : this.devices.values()) {

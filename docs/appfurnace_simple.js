@@ -62,7 +62,7 @@ function pollUbihelper() {
             url:ubihelperUrl,
             type:"POST",
             data:ubihelperQuery,
-            dataType:'json',
+            // Note: seems to cause an error, at least in 1.2 player: dataType:'json',
             complete:function() {
                 setTimeout("pollUbihelper()", 1000*pollInterval);
             },
