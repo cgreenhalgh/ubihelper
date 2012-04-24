@@ -1,11 +1,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
 
+
+
 <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>UbiHelper Peer Network</title></head><body>
 <h1>UbiHelper Peer Network</h1>
 <p>
 
-Chris Greenhalgh, 2012-02-21. Revised 2012-04-23 for greater portability.<br>
+Chris Greenhalgh, 2012-02-21. Revised 2012-04-23 for greater portability.
+Revised 2012-04-24 to add known host (server) option, clarify
+init_peer_req responses and to improve existing peer request handling,
+i.e. remove init_confirm_untrusted.<br>
 </p>
 <p>Working/design notes on the peer networking element of the ubihelper service/framework.</p>
 <p>Requirements:</p>
@@ -217,48 +222,49 @@ New peer request (after new connection exchange):<br>
 <ul>
 <li>initiator sends <span style="text-decoration: line-through;">MANAGEMENT</span> message (JSON object) with properties:</li>
 <ul>
-<li>type = "init_peer_req"</li><li>id = DEVICE-ID (unique)</li>
-<li>pindigest = bas64-encoded MD5 digest of initiator nonce and UTF-8 encoded pin</li>
-<li>port = initiator service port</li>
+    <li>type = "init_peer_req"</li>
+<li>id = DEVICE-ID (unique)</li>
+<li>pindigest = base64-encoded MD5 digest of initiator nonce and UTF-8 encoded pin</li>
+<li>(opt.) port = initiator service port</li>
 <li>name = device (discovery) name</li>
     <li>(opt.) reason = "challenge_failed" | "unknown_peer" - when sent after a failure - see resp_peer_known response, below</li>
-    <li><span style="font-style: italic;">version = VERSION-ID</span><br>
-    </li>
+    <li><span style="font-style: italic;">version = VERSION-ID</span></li>
+    <li><span style="font-style: italic;">(opt.) host = RECV-HOST - for well-known server name (c.f. HTTP Host)<br>
+</span></li>
 
 
-</ul><li>responder&nbsp;</li>
+
+</ul></ul><span style="font-style: italic;"></span>
 <ul>
-<li>with PIN UI, requests PIN from user, and sends <span style="text-decoration: line-through;">MANAGEMENT</span> message with properties:</li>
+  <li>responder&nbsp;</li>
+
+<ul>
+    <li>known ID with established session, if no init_peer_req reason or not prepared to discard old peer association, <br>
+sends <span style="text-decoration: line-through;">MANAGEMENT</span> (c.f. resp_confirm, below) (note: should never happen with known host)<br>
+    </li>
+    <ul>
+<li>type = "resp_peer_known"</li><li>id = ....</li><li>name = ...</li><li>port = ...</li><li>challenge1resp = base64-encoded MD5 digest of pindigest and secret</li><li>challenge2 = base64-encoded challenge</li>
+    </ul>
+<li>else with PIN UI, requests PIN from user, and sends <span style="text-decoration: line-through;">MANAGEMENT</span> message with properties:</li>
 <ul>
 <li>type = "resp_peer_pin"</li>
 <li>id = DEVICE-ID</li>
-<li>port = service port (initiator should have used it anyway)</li>
+<li>(opt.) port = service port (initiator should have used it anyway)</li>
 <li>name = device (discovery) name (initiator usually has it anyway)</li>
 <li>pin = input pin text</li>
 </ul>
-<li>no PIN, sends <span style="text-decoration: line-through;">MANAGEMENT</span> (combination of resp_peer_pin &amp; resp_peer_done) -&gt; peered<br>
+<li>or no PIN, send <span style="text-decoration: line-through;">MANAGEMENT</span> (combination of resp_peer_pin &amp; resp_peer_done) -&gt; peered<br>
 </li>
 <ul>
 <li>type = "resp_peer_nopin"</li>
 <li>id = DEVICE-ID</li>
 <li>name = ...</li>
-<li>port = ...</li>
+<li>(opt.) port = ...</li>
 <li>info = ...</li>
 <li>secret = ...</li>
 </ul>
-<li>known ID with established session, sends <span style="text-decoration: line-through;">MANAGEMENT</span> (c.f. resp_confirm, below)<br>
-</li>
-<ul>
-<li>type = "resp_peer_known"</li>
-<li>id = ....</li>
-<li>name = ...</li>
-<li>port = ...</li>
-      <li>challenge1resp = base64-encoded MD5 digest of pindigest and secret</li>
-      <li>challenge2 = base64-encoded challenge</li>
-
-</ul>
-</ul>
-<li>initiator -&nbsp;</li>
+    <li> if (wrong) host specified reject with reason 'unknown_host'</li>
+</ul><li>initiator -&nbsp;</li>
 <ul>
 <li>Receives resp_peer_pin with correct pin, sends <span style="text-decoration: line-through;">MANAGEMENT</span>:</li>
 </ul>
@@ -277,7 +283,8 @@ New peer request (after new connection exchange):<br>
       <li>else return init_peer_req with <br>
       </li>
       <ul>
-        <li>reason = "challenge_failed" | "unknown_peer"</li>
+        <li>reason = "challenge_failed" | "unknown_peer" <br>
+</li>
       </ul>
     </ul>
 
@@ -291,12 +298,13 @@ New peer request (after new connection exchange):<br>
 <li>secret = ...</li>
 </ul>
 </ul>
-</ul>Existing peer request (after new connection exchange):<br>
+</ul>
+Existing peer request (after new connection exchange):<br>
 
 <ul>
 <li>initiator sends <span style="text-decoration: line-through;">MANAGEMENT</span> message (JSON object) with properties:</li>
   <ul>
-    <li>to trusted peer:<br>
+    <li>to <span style="text-decoration: line-through;">trusted</span> peer:<br>
     </li>
   </ul>
   <ul>
@@ -307,28 +315,35 @@ New peer request (after new connection exchange):<br>
       <li>challenge1 = base64-encoded challenge<br>
       </li>
 <li>port = initiator service port</li><li>name = device (discovery) name</li>
-      <li><span style="font-style: italic;">version = VERSION-ID</span><br>
-  </li>
+      <li><span style="font-style: italic;">version = VERSION-ID</span></li>
+      <li><span style="font-style: italic;">(opt.) host = RECV-HOST - for known host only<br>
+</span></li>
+
 
     </ul>
-    <li>untrusted peer</li>
-    <ul>
+    <li style="text-decoration: line-through;">untrusted peer</li>
+    <ul style="text-decoration: line-through;">
       <li>type = "init_confirm_untrusted"</li>
       <li>id = DEVICE-ID (unique)</li>
       <li>confirmid = RECV-DEVICE-ID (expected)<br>
   </li>
       <li>port = initiator service port</li>
       <li>name = device (discovery) name</li>
-      <li><span style="font-style: italic;">version = VERSION-ID</span><br>
-  </li>
+      <li><span style="font-style: italic;">version = VERSION-ID</span></li>
 
     </ul>
-  </ul>
+  </ul></ul><span style="font-style: italic;">Note:
+I don't think it should ever do init_confirm_untrusted - it doesn't
+matter how the association was established, we still need to ensure
+that it is the same association, i.e. we have the same shared secret as
+was previously established.</span><br>
+<ul>
+
   <li>responder</li>
   <ul>
-    <li>untrusted, correct confirmid -&gt; reject, or return resp_peer_nopin (above) -&gt; peered<br>
+    <li><span style="text-decoration: line-through;">untrusted, correct confirmid -&gt; reject, or return resp_peer_nopin (above) -&gt; peered</span><br>
     </li>
-    <li>trusted, correct confirmid -&gt; generate challenge1digest using secret, return</li>
+    <li><span style="text-decoration: line-through;">trusted, </span>correct confirmid -&gt; generate challenge1digest using secret, return</li>
     <ul>
       <li>type = "resp_confirm"</li>
       <li>id = DEVICE-ID</li>
@@ -341,7 +356,7 @@ New peer request (after new connection exchange):<br>
     </li>
     <ul>
       <li>type = "reject"</li>
-      <li>reason = "not_my_id" | "challenge_failed | "unknown_peer"<br>
+      <li>reason = "not_my_id" | "unknown_host" | "challenge_failed | "unknown_peer"<br>
       </li>
       <li>message = HUMAN-READABLE</li>
     </ul>
@@ -361,5 +376,6 @@ New peer request (after new connection exchange):<br>
     </li>
   </ul>
 </ul>
+
 
 </body></html>

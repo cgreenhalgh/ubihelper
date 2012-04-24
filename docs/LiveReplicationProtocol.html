@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
-  
-  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
-  <title>Live Replication Protocol</title>
 
   
-</head><body>
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Live Replication Protocol</title></head><body>
 <h1>Live Replication Protocol</h1>
 
-<p>Chris Greenhalgh, 2012-03-28</p>
+<p>Chris Greenhalgh, 2012-03-28. Updated 2012-04-24 to add
+implementation and message format notes from initial implementation in
+ubiserver2.<br>
+</p>
 
 <h2>Introduction</h2>
 
@@ -80,7 +80,7 @@ WebSockets as a transport for IP-based communication.</li>
 use a WebSocket-based protocol layer (for framing and control messages)</li>
   </ul>
 </ul>
-
+<h2>Description</h2>
 Protocol notes:<br>
 
 <ul>
@@ -184,9 +184,61 @@ there are two (or more) snapshot messages not sent then all not sent
 messages up to the last not sent snapshot are merged, i.e. only the
 last update for each key is retained and the ealier snapshot messages
 are discarded.</li>
+</ul>Implementation notes:<br>
+<ul>
+  <li>initial implemenation is organised as:</li>
+  <ul>
+    <li>Store - simple key-value store, with support for set, get, list (all), begin/end (for grouping updates) and change listeners</li>
+    <li>Sender - created from a Store, and responsible for sender side
+of protocol. There may be many Senders for one Store (each sending to a
+different Receiver). Surrounding infrastructure calls methods on Sender
+to inform it of availability or otherwise of facility to send and of
+received acks.</li>
+    <li>Receiver - created directly, and creates/maintains a single
+Store (copy). There should be exactly one Receiver for each Sender.
+Surrounding infrastructure calls a single method to inform it of a
+received message from the corresponding Sender.</li>
+  </ul>
+  <li>The Store maintained by a Receiver can have its own Senders, to create further replicas.<br>
+  </li>
 </ul>
 
+
+<h2>Messages</h2>
+Format of message(s) from Sender (multiplexing of senders is handled outside/around this):<br>
+<ul>
+  <li>ackid: int - ID of this message for receiver to ack</li>
+  <li>updates: { key: value, ... } - set of updates. Value null implies
+key should be removed. Reserved key '_TIMESTAMP' has completed snapshot
+timestamp (number) as value</li>
+  <li>(opt.) newstate: true - set iff Sender this is first update sent to receiver, i.e. sender known state is empty</li>
+  <li>(opt.) newupdate: timestamp (number) - set if this is first
+update in a new sequence, by the end of which the snapshot timestamp
+will be that specified (used by receiver to check if a complete
+snapshot has been received by checking no missed ackids between
+newupdate: T and updates:{_TIMESTAMP: T,...}</li>
+</ul>
+In the ubiserver2 peer-to-peer context these messages are wrapper in<br>
+<ul>
+  <li>type: 'sender'</li>
+  <li>sender: SENDERNAME</li>
+  <li>msg: message as a above<br>
+  </li>
+</ul>
+Format of message(s) from Receiver to sender (multiplexing of senders/receivers is handled outside/around this):<br>
+<ul>
+  <li>ackids: [ int, ... ] - array of Sender message ackids to
+acknowledge. Each ackid must be specified explicitly (there is no
+assumption made that unspecified messages are being acked).</li>
+</ul>
+In the ubiserver2 peer-to-peer context these messages are wrapped in<br>
+<ul>
+  <li>type: 'receiver'</li>
+  <li>sender: SENDERNAME</li>
+  <li>msg: message as above</li>
+</ul>
 <br>
+
 
 <br>
 </body></html>
