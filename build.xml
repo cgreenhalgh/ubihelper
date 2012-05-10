@@ -36,7 +36,7 @@ build the (optional) J2SE server(s).</echo>
     <target name="jar" depends="info">
     	<mkdir dir="build"/>
     	<delete file="ubihelper-server.jar"></delete>
-    	<javac debug="true" destdir="build" srcdir="src" includeantruntime="false" includes="uk/ac/horizon/ubihelper/protocol/**, uk/ac/horizon/ubihelper/j2se/**, uk/ac/horizon/ubihelper/channel/**, org/json/**">
+    	<javac debug="true" destdir="build" srcdir="src" includeantruntime="false" includes="uk/ac/horizon/ubihelper/protocol/**, uk/ac/horizon/ubihelper/j2se/**, uk/ac/horizon/ubihelper/channel/**, uk/ac/horizon/ubihelper/websocket/**, org/json/**">
     	</javac>
     	<jar basedir="build" destfile="ubihelper-server.jar"></jar>
     </target>
@@ -55,6 +55,15 @@ build the (optional) J2SE server(s).</echo>
 				<pathelement location="ubihelper-server.jar"/>
 			</classpath>
 			<arg value="30303"/>
+		</java>
+	</target>
+
+	<target name="wsclient">
+		<java fork="true" classname="uk.ac.horizon.ubihelper.websocket.ClientWebsocket">
+			<classpath>
+				<pathelement location="ubihelper-server.jar"/>
+			</classpath>
+			<arg value="ws://localhost:49891"/>
 		</java>
 	</target>
 

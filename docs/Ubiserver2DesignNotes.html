@@ -1,5 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
+
 <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Ubiserver2 Design Notes</title></head><body>
 <h1>Ubiserver2 Design Notes</h1>
 <p>Chris Greenhalgh, 2012-04-23</p>
@@ -48,7 +49,25 @@ token to the server in each request (could be a query parameter or
 special first message). This could comprise a persistent client ID and
 a connection (initiation) timestamp.<br>
     </li>
-    <li>Use over simple TCP could replicate Websocket operation.&nbsp;</li>
+    <li>Use over simple TCP could replicate Websocket operation.</li>
+    <li>The Javascript websocket API (<a href="http://www.w3.org/TR/websockets/">http://www.w3.org/TR/websockets/</a>) which includes:</li>
+    <ul>
+      <li>constructor = connect, to websocket URL with optional array of protocol strings</li>
+      <li>send(String) (also send(Blob) and send(ArrayBuffer))</li>
+      <li>onmessage -&gt; event message, data = String (or Blob/ArrayBuffer), origin = url<br>
+      </li>
+      <li>close()<br>
+      </li>
+      <li>onopen -&gt; event open<br>
+      </li>
+      <li>onerror -&gt; event error<br>
+      </li>
+      <li>onclose -&gt; event close, wasClean = true/false, code=..., reason=...<br>
+      </li>
+      <li>readyState: CONNECTING (0), OPEN (1), CLOSING (2), CLOSED (3)<br>
+      </li>
+    </ul>
+
   </ul>
   <li>Socket.io provides one possible abstraction over JSONP and
 Websockets. It requires the server to be a HTTP server
@@ -78,8 +97,45 @@ are authenticated before being assigned to an existing association.</li>
     <li>Propagating changes to a single state set would use the (designed but not yet implemented) <a href="LiveReplicationProtocol.html">Live Replication protocol</a>.</li>
     <li>This might be bootstrapped via one or more auto-shared state
 sets, which could be used (amongst other things) to push subscription
-requests for further far-end state sets.<br>
-    </li>
+requests for further far-end state sets.</li>
+  </ul>
+</ul>Implementation variants<br>
+<ul>
+  <li>First version is implemented in Javascript (only) using
+socket.io, which in turn my be operating over JSONP-polling, HTTP
+polling or websockets, depending on client capabilities and cross-site
+constraints (currently within AppFurnace simulator, on mobile browser,
+on desktop browser, respectively).</li>
+  <li>Second version should  be in Java. <br>
+  </li>
+  <ul>
+    <li>It should operate over:</li>
+  </ul>
+  <ul>
+    <ul>
+      <li>websocket, to interact with (a revision of) the Javascript server (using websocket directly, rather than socket.io)</li>
+      <li>tcp socket, to interact natively with other devices and with a Java server<br>
+      </li>
+      <ul>
+        <li>this could use websocket's framing <br>
+        </li>
+        <li>this would not require the initial HTTP exchange</li>
+        <li>this should use java.nio.SocketChannel for non-blocking/selectable IO</li>
+      </ul>
+      <li>bluetooth socket (Android), to interact natively with other (Android) devices</li>
+      <ul>
+        <li>this could use websocket's framing</li>
+        <li>this would have to use android.bluetooth.BluetoothSocket,
+which has blocking connect/accept, input stream read, output stream
+write and (non-blocking?!) close.</li>
+      </ul>
+    </ul>
+    <li>Notes:</li>
+    <ul>
+      <li>The basic service required is bidirectional transmission of JSON-encoded objects, i.e. UTF-8 strings.<br>
+      </li>
+    </ul>
   </ul>
 </ul>
+
 </body></html>
