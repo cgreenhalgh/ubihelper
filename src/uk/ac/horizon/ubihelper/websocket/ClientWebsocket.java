@@ -159,7 +159,7 @@ public class ClientWebsocket extends SocketChannelWebsocket {
 			int maxChars = (int)Math.ceil(cd.maxCharsPerByte()*nbytes);
 			CharBuffer cb = CharBuffer.allocate(maxChars);
 			for (int i =0; i<bufs.length; i++) {
-				logger.info("decode "+bufs[i].remaining()+" bytes from buffer "+i+" position "+bufs[i].position());
+				//logger.info("decode "+bufs[i].remaining()+" bytes from buffer "+i+" position "+bufs[i].position());
 				CoderResult cr = cd.decode(bufs[i], cb, (i+1)==bufs.length);
 				if (cr!=CoderResult.UNDERFLOW) {
 					logger.warning("Error decoding response in buffer "+i+"/"+bufs.length);
@@ -171,6 +171,8 @@ public class ClientWebsocket extends SocketChannelWebsocket {
 			cb.position(0);
 			logger.info("Got response, "+cb.limit()+" chars: "+cb.toString());
 			// TODO
+			
+			
 			
 			responseReceived = true;
 			if (readyState==ReadyState.CONNECTING) {

@@ -41,6 +41,16 @@ build the (optional) J2SE server(s).</echo>
     	<jar basedir="build" destfile="ubihelper-server.jar"></jar>
     </target>
 
+    <target name="json" depends="info">
+    	<mkdir dir="build"/>
+    	<delete file="json.jar"></delete>
+    	<javac debug="true" destdir="build" srcdir="src" includeantruntime="false" includes="org/json/**">
+    	</javac>
+    	<jar basedir="build" destfile="json.jar">
+    		<include name="org/json/**"/>
+    	</jar>
+    </target>
+
 	<target name="run">
 		<java fork="true" classname="uk.ac.horizon.ubihelper.j2se.Server">
 			<classpath>
